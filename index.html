@@ -42,6 +42,25 @@
             box-shadow: var(--card-shadow); 
             margin-bottom: 15px; 
             border: 1px solid rgba(255, 255, 255, 0.6);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        /* Drag and drop interaction state stylings */
+        .card.draggable-item {
+            cursor: grab;
+        }
+        .card.draggable-item:active {
+            cursor: grabbing;
+        }
+        .card.dragging {
+            opacity: 0.4;
+            transform: scale(0.98);
+            border: 2px dashed #94a3b8;
+        }
+        .card.drag-over {
+            border-top: 4px solid var(--primary);
+            transform: translateY(4px);
+            box-shadow: 0 15px 20px -5px rgba(0, 0, 0, 0.1);
         }
 
         button { 
@@ -94,7 +113,6 @@
             color: white; margin-bottom: 8px;
         }
 
-        /* Standardized class rule to maintain visual multiline structural alignment */
         .paragraph-text {
             white-space: pre-wrap;
             word-wrap: break-word;
@@ -164,6 +182,10 @@
 
         <button id="add-q-btn" class="btn-main" onclick="addOrUpdateQuestion()" style="margin-top:15px;">Save Item to List</button>
     </div>
+    
+    <!-- Drag Instruction -->
+    <p style="font-size: 0.8rem; color: #64748b; margin: 5px 0; text-align: center;">💡 Hold and drag cards below to quickly rearrange their order</p>
+    
     <div id="questions-preview"></div>
     <button class="btn-success" onclick="saveProject()">Finalize & Save Project</button>
 </div>
@@ -219,6 +241,9 @@
     let audioChunks = [];
     let startTime, timerInterval, elapsedSeconds = 0;
     let activeProjectQuestions = [];
+    
+    // Track target index during a Drag event
+    let draggedItemIdx = null;
 
     // --- Navigation ---
     function showView(id) {
@@ -373,10 +398,16 @@
 
     function renderEditorPreview() {
         let questionCounter = 0;
-        document.getElementById('questions-preview').innerHTML = tempProject.questions.map((q, i) => {
+        const container = document.getElementById('questions-preview');
+        
+        if (tempProject.questions.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#94a3b8;">No items added yet.</p>';
+            return;
+        }
+
+        container.innerHTML = tempProject.questions.map((q, i) => {
             const eType = q.entryType || 'question';
             
-            // Increment sequence number exclusively for questions
             let displayTitle = '';
             if (eType === 'question') {
                 questionCounter++;
@@ -386,7 +417,15 @@
             }
 
             return `
-            <div class="card" style="opacity:${q.disabled ? '0.5' : '1'}; border-left: 5px solid var(--color-${eType})">
+            <div class="card draggable-item" 
+                 draggable="true" 
+                 data-index="${i}" 
+                 ondragstart="handleDragStart(event)"
+                 ondragover="handleDragOver(event)"
+                 ondragleave="handleDragLeave(event)"
+                 ondrop="handleDrop(event)"
+                 ondragend="handleDragEnd(event)"
+                 style="opacity:${q.disabled ? '0.5' : '1'}; border-left: 5px solid var(--color-${eType})">
                 <span class="badge" style="background-color: var(--color-${eType})">${eType}</span>
                 <div class="paragraph-text">${displayTitle}</div>
                 <div style="display:flex; gap:5px; flex-wrap:wrap;">
@@ -398,6 +437,48 @@
                 </div>
             </div>`;
         }).join('');
+    }
+
+    // --- Native HTML5 Drag and Drop Handlers ---
+    function handleDragStart(e) {
+        draggedItemIdx = parseInt(e.currentTarget.getAttribute('data-index'));
+        e.currentTarget.classList.add('dragging');
+        // Setting effectAllowed for modern browser compliance
+        e.dataTransfer.effectAllowed = 'move';
+    }
+
+    function handleDragOver(e) {
+        // Necessary to allow dropping elements safely
+        if (e.preventDefault) { e.preventDefault(); }
+        e.currentTarget.classList.add('drag-over');
+        return false;
+    }
+
+    function handleDragLeave(e) {
+        e.currentTarget.classList.remove('drag-over');
+    }
+
+    function handleDrop(e) {
+        if (e.stopPropagation) { e.stopPropagation(); }
+        e.preventDefault();
+        
+        const targetIdx = parseInt(e.currentTarget.getAttribute('data-index'));
+        e.currentTarget.classList.remove('drag-over');
+        
+        // Execute placement alterations if valid destination index match
+        if (draggedItemIdx !== null && draggedItemIdx !== targetIdx) {
+            const movedElement = tempProject.questions.splice(draggedItemIdx, 1)[0];
+            tempProject.questions.splice(targetIdx, 0, movedElement);
+            renderEditorPreview();
+        }
+    }
+
+    function handleDragEnd(e) {
+        e.currentTarget.classList.remove('dragging');
+        document.querySelectorAll('.draggable-item').forEach(item => {
+            item.classList.remove('drag-over');
+        });
+        draggedItemIdx = null;
     }
 
     function loadQForEdit(i) {
@@ -427,7 +508,7 @@
         renderEditorPreview();
     }
 
-    toggleQ = (i) => { tempProject.questions[i].disabled = !tempProject.questions[i].disabled; renderEditorPreview(); }
+    function toggleQ(i) { tempProject.questions[i].disabled = !tempProject.questions[i].disabled; renderEditorPreview(); }
     function removeQ(i) { if(confirm("Delete this item?")) { tempProject.questions.splice(i,1); renderEditorPreview(); } }
 
     function saveProject() {
@@ -463,7 +544,6 @@
                     inputElementBlock = q.options.map(opt => `<label class="choice-row"><input type="${q.type}" name="q${i}" value="${opt}" class="ans-in" data-idx="${i}"> <span>${opt}</span></label>`).join('');
                 }
             } else {
-                // Static instructions have no numbering and omit interactive user inputs completely
                 labelTitle = `<b>${q.text}</b>`;
                 inputElementBlock = ''; 
             }
@@ -498,13 +578,12 @@
                     txt += `A: ${document.querySelector(`textarea[data-idx="${i}"]`).value}\n`;
                 }
             } else {
-                // Save text values from layout elements directly
                 txt += `${typeHeader}: ${q.text}\n`;
             }
             txt += `-------------------\n`;
         });
         reports.push({ name: activeName, date: new Date().toLocaleString(), content: txt });
-        localStorage.setItem('ct_reports', JSON.stringify(reports));
+        localStorage.setItem('ct_projects', JSON.stringify(reports));
         downloadFile(new Blob([txt], {type:'text/plain'}), `Record_${activeName}.txt`);
         if(audioChunks.length > 0) downloadFile(new Blob(audioChunks, {type:'audio/webm'}), `Audio_${activeName}.webm`);
         showView('view-thanks');
