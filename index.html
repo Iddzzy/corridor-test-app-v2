@@ -54,6 +54,7 @@
             padding: 16px; font-weight: 600; border: none; border-radius: 12px; 
             color: white; cursor: pointer; margin: 8px 0; width: 100%; font-size: 1rem; 
             transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;
+            box-sizing: border-box;
         }
         button:active { transform: scale(0.97); }
         .btn-main { background: var(--primary); }
@@ -107,8 +108,6 @@
             line-height: 1.5;
         }
     </style>
-    
-    <!-- Required Client-Side Core PowerPoint Construction Modules -->
     <script src="https://cdn.jsdelivr.net/gh/gitbrent/PptxGenJS@3.12.0/dist/pptxgen.bundle.js"></script>
 </head>
 <body>
@@ -120,8 +119,8 @@
         <button class="btn-main" onclick="showView('view-projects-start')">Start Corridor Test</button>
         <button class="btn-alt" onclick="showView('view-settings')">List Of Project</button>
         <button class="btn-success" onclick="showView('view-reports')">Record</button>
-        <!-- New Core Report Generation Engine Placement -->
-        <button style="background: #8b5cf6;" onclick="showView('view-analytics-report')">Report Module</button>
+        <!-- Renamed Module Navigation Binding from 'Report Module' to 'Report' -->
+        <button style="background: #8b5cf6;" onclick="showView('view-analytics-report')">Report</button>
     </div>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
         <button style="background: #64748b;" onclick="showView('view-logs')">Log</button>
@@ -198,10 +197,10 @@
     </div>
 </div>
 
-<!-- NEW REPORT GENERATION SUITE MODULE VIEW -->
+<!-- REPORT VIEW MANAGEMENT NODE -->
 <div id="view-analytics-report" class="view">
     <button class="btn-back" onclick="showView('view-main')">← Back Home</button>
-    <h2>Executive Report Generator</h2>
+    <h2>Report Module</h2>
     <div class="card">
         <label for="report-project-picker" style="font-size: 0.85rem; font-weight: 600;">Select Target Project Profile</label>
         <select id="report-project-picker"></select>
@@ -222,11 +221,7 @@
 </div>
 
 <!-- RECORD, LOG, SUMMARY -->
-<div id="view-reports" class="view"> 
-    <button class="btn-back" onclick="showView('view-main')">← Back</button> 
-    <h2>Record Details</h2> 
-    <div id="reports-list"></div> 
-</div>
+<div id="view-reports" class="view"> <button class="btn-back" onclick="showView('view-main')">← Back</button> <h2>Record Details</h2> <div id="reports-list"></div> </div>
 <div id="view-logs" class="view"> <button class="btn-back" onclick="showView('view-main')">← Back</button> <h2>Log</h2> <div id="logs-list"></div> </div>
 <div id="view-summary" class="view"> <button class="btn-back" onclick="showView('view-main')">← Back</button> <h2>Summary</h2> <div id="summary-content"></div> </div>
 
@@ -521,7 +516,7 @@
     function finishInterview() {
         const activeName = document.getElementById('active-p-name').innerText;
         const dur = document.getElementById('timer-display').innerText;
-        const explicitTimestamp = new Date().toLocaleString(); // Added precise local tracking stamp
+        const explicitTimestamp = new Date().toLocaleString();
         
         let txt = `REPORT: ${activeName}\nDATE/TIME: ${explicitTimestamp}\nDURATION: ${dur}\n\n`;
         let logQuestionCounter = 0;
@@ -546,13 +541,7 @@
             txt += `-------------------\n`;
         });
         
-        // Append explicit recording date and time details directly into state
-        reports.push({ 
-            name: activeName, 
-            date: explicitTimestamp, 
-            content: txt 
-        });
-        
+        reports.push({ name: activeName, date: explicitTimestamp, content: txt });
         localStorage.setItem('ct_reports', JSON.stringify(reports));
         downloadFile(new Blob([txt], {type:'text/plain'}), `Record_${activeName.replace(/\s+/g, '_')}.txt`);
         if(audioChunks.length > 0) downloadFile(new Blob(audioChunks, {type:'audio/webm'}), `Audio_${activeName.replace(/\s+/g, '_')}.webm`);
@@ -579,26 +568,27 @@
     function renderSummary() { document.getElementById('summary-content').innerHTML = `<div class="card">Projects Profile Count: ${projects.length}<br>Total Text Records: ${reports.length}<br>PPTX Reports Generated: ${pptxReports.length}</div>`; }
     function deleteProject(i) { if(confirm("Delete?")) { projects.splice(i,1); localStorage.setItem('ct_projects', JSON.stringify(projects)); renderProjectList(); } }
 
-    // --- NEW REPORT ENGINE EXTENSION MODULE ---
+    // --- REPORT EXTENSION MODULE ---
     function initReportModuleView() {
         const picker = document.getElementById('report-project-picker');
         if(projects.length === 0) {
             picker.innerHTML = '<option value="">-- No Active Projects Exist --</option>';
         } else {
-            picker.innerHTML = projects.map((p, i) => `<option value="${i}">${p.name}</option>`).join('');
+            picker.innerHTML = projects.map((p, i) => `<option value="${p.name}">${p.name}</option>`).join('');
         }
         renderGeneratedPptxList();
     }
 
     function generateExecutiveReport() {
-        const idx = document.getElementById('report-project-picker').value;
-        if(idx === "") return alert("Please establish a project template sequence profile first!");
+        const pName = document.getElementById('report-project-picker').value;
+        if(pName === "") return alert("Please establish a project template sequence profile first!");
         
-        const targetProj = projects[idx];
+        const targetProj = projects.find(p => p.name === pName);
+        if(!targetProj) return alert("Selected project context could not be resolved.");
+
         const reportId = Date.now();
         const timestampString = new Date().toLocaleString();
         
-        // Count elements categories
         let questionsCount = 0, tasksCount = 0, notesCount = 0, readsCount = 0, titlesCount = 0;
         targetProj.questions.forEach(q => {
             const t = q.entryType || 'question';
@@ -609,7 +599,6 @@
             if(t === 'title' || t === 'remark') titlesCount++;
         });
 
-        // Assemble clean formatted text layout configuration
         let executiveSummaryText = `Project Profile Target Name: ${targetProj.name}\n` +
                                    `Report Compilation Date/Time: ${timestampString}\n\n` +
                                    `--- Corridor Test Structural Distribution Metrics ---\n` +
@@ -625,7 +614,7 @@
             projectName: targetProj.name,
             compiledTime: timestampString,
             summary: executiveSummaryText,
-            projectData: targetProj // Deep store structural profile parameters inside report index array
+            projectData: targetProj 
         };
 
         pptxReports.unshift(newReportItem);
@@ -644,14 +633,16 @@
         listContainer.innerHTML = pptxReports.map((r, i) => `
             <div class="card">
                 <div style="margin-bottom: 12px;">
-                    <span class="badge" style="background:#8b5cf6;">PPTX Presentation</span><br>
+                    <span class="badge" style="background:#8b5cf6;">PPTX Presentation Matrix</span><br>
                     <b style="font-size:1.1rem;">${r.projectName}</b><br>
                     <small style="color:#64748b;">Compiled: ${r.compiledTime}</small>
                 </div>
                 <div style="white-space: pre-wrap; font-size:0.85rem; background:#f1f5f9; padding:12px; border-radius:8px; margin-bottom:12px; color:#334155;">${r.summary}</div>
-                <div style="display:flex; gap:8px;">
-                    <button class="btn-success" style="margin:0; padding:10px;" onclick="downloadPowerPointPresentation(${i})">📥 Download PPTX</button>
-                    <button class="btn-danger" style="margin:0; padding:10px; background:#ef4444;" onclick="deleteGeneratedReport(${i})">🗑 Delete</button>
+                <div style="display:grid; grid-template-columns: 1fr; gap:8px;">
+                    <button class="btn-success" style="margin:0; padding:12px;" onclick="downloadPowerPointPresentation(${i})">📥 Download PPTX Deck</button>
+                    <!-- Added CTA element to extract answers exclusively into a structured Excel CSV format spreadsheet matrix -->
+                    <button class="btn-main" style="margin:0; padding:12px; background:#10b981;" onclick="downloadFullFeedbackCSV('${r.projectName.replace(/'/g, "\\'")}')">📊 Download Full Feedback (Excel)</button>
+                    <button class="btn-danger" style="margin:0; padding:12px; background:#ef4444;" onclick="deleteGeneratedReport(${i})">🗑 Delete Report</button>
                 </div>
             </div>`).join('');
     }
@@ -665,37 +656,75 @@
         }
     }
 
+    // Compiles feedback for a given project into an Excel-compatible structured spreadsheet matrix
+    function downloadFullFeedbackCSV(projectName) {
+        // Filter session records matching the project context signature
+        const filteredRecords = reports.filter(r => r.name === projectName);
+        
+        if (filteredRecords.length === 0) {
+            return alert("No runtime session records matching this project profile were found in local storage. Complete a test sequence first!");
+        }
+
+        // Establish core data matrix headers using standard CSV rules
+        let csvContent = "\uFEFF"; // UTF-8 BOM definition to force Microsoft Excel to read characters cleanly
+        csvContent += "Session Date/Time,Question Sequence Label,Target Question Description,Captured User Response Input\n";
+
+        filteredRecords.forEach(record => {
+            const lines = record.content.split('\n');
+            let currentQuestionText = "";
+            let questionNumber = 0;
+
+            // Loop through lines to parse data signatures
+            lines.forEach(line => {
+                const trimmed = line.trim();
+                
+                if (trimmed.startsWith("QUESTION ")) {
+                    // Extract question text descriptions cleanly
+                    const colonIdx = trimmed.indexOf(':');
+                    if (colonIdx !== -1) {
+                        questionNumber++;
+                        currentQuestionText = trimmed.substring(colonIdx + 1).trim();
+                    }
+                } else if (trimmed.startsWith("A:") && currentQuestionText !== "") {
+                    // Capture question-specific user responses
+                    const answerText = trimmed.substring(2).trim();
+                    
+                    // Format output strings safely using CSV double-quote wrapping rules
+                    const safeDate = `"${record.date.replace(/"/g, '""')}"`;
+                    const safeLabel = `"Question ${questionNumber}"`;
+                    const safeQuestion = `"${currentQuestionText.replace(/"/g, '""')}"`;
+                    const safeAnswer = `"${answerText.replace(/"/g, '""')}"`;
+                    
+                    csvContent += `${safeDate},${safeLabel},${safeQuestion},${safeAnswer}\n`;
+                    currentQuestionText = ""; // Clear parsing track
+                }
+            });
+        });
+
+        // Trigger safe file download
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        downloadFile(blob, `Full_Feedback_${projectName.replace(/\s+/g, '_')}.csv`);
+        addLog(`Extracted Spreadsheet Sheet Feedback Matrix: ${projectName}`);
+    }
+
     function downloadPowerPointPresentation(idx) {
         if (typeof PptxGenJS === 'undefined') {
-            return alert("The PowerPoint rendering engine is currently offline or blocked by connectivity rules. Please check your network connection and try again.");
+            return alert("The PowerPoint rendering engine is offline. Check your internet connection.");
         }
 
         const reportData = pptxReports[idx];
         const proj = reportData.projectData;
         
-        // Instantiate fresh presentation object model mapping layout
         let pptx = new PptxGenJS();
         pptx.layout = 'LAYOUT_16x9';
 
-        // SLIDE 1: Title & Executive Overview slide configuration layout parameters
+        // SLIDE 1: Cover & Executive Dashboard Info Layout Block
         let slide1 = pptx.addSlide();
-        
-        // Accent Background Top Bar
         slide1.addShape(pptx.ShapeType.rect, { fill: { color: "2563EB" }, x: 0, y: 0, w: "100%", h: 1.2 });
-        
-        slide1.addText("CORRIDOR TEST EXECUTIVE REPORT", { 
-            x: 0.5, y: 0.3, w: 12.0, h: 0.6, fontSize: 24, bold: true, color: "FFFFFF" 
-        });
+        slide1.addText("CORRIDOR TEST EXECUTIVE REPORT", { x: 0.5, y: 0.3, w: 12.0, h: 0.6, fontSize: 24, bold: true, color: "FFFFFF" });
+        slide1.addText(`Project Profile: ${reportData.projectName}`, { x: 0.5, y: 1.6, w: 12.0, h: 0.5, fontSize: 20, bold: true, color: "1E293B" });
+        slide1.addText(`Compilation Run Frame: ${reportData.compiledTime}`, { x: 0.5, y: 2.1, w: 12.0, h: 0.4, fontSize: 12, italic: true, color: "64748B" });
 
-        slide1.addText(`Project Profile: ${reportData.projectName}`, { 
-            x: 0.5, y: 1.6, w: 12.0, h: 0.5, fontSize: 20, bold: true, color: "1E293B" 
-        });
-        
-        slide1.addText(`Compilation Run Frame: ${reportData.compiledTime}`, { 
-            x: 0.5, y: 2.1, w: 12.0, h: 0.4, fontSize: 12, italic: true, color: "64748B" 
-        });
-
-        // Metrics Table Grid Layout Parameters
         let itemTally = proj.questions.length;
         let qCount = proj.questions.filter(q => (q.entryType || 'question') === 'question').length;
         let tCount = proj.questions.filter(q => q.entryType === 'task').length;
@@ -704,7 +733,7 @@
         let titCount = proj.questions.filter(q => (q.entryType === 'title' || q.entryType === 'remark')).length;
 
         let rows = [
-            [{ text: "Structural Element Type", options: { bold: true, fill: "E2E8F0" } }, { text: "Total Configured Metrics Tally", options: { bold: true, fill: "E2E8F0" } }],
+            [{ text: "Structural Element Type", options: { bold: true, fill: "E2E8F0" } }, { text: "Total Metrics Tally", options: { bold: true, fill: "E2E8F0" } }],
             ["Total Target Elements", `${itemTally} units`],
             ["Interactive Operational Questions", `${qCount} components`],
             ["Action Tasks", `${tCount} units`],
@@ -712,40 +741,89 @@
             ["Scripted Prompt Reads", `${rCount} strings`],
             ["Layout Division Titles", `${titCount} elements`]
         ];
-        
         slide1.addTable(rows, { x: 0.5, y: 2.8, w: 7.0, h: 2.5, border: { type: "solid", color: "CBD5E1", pt: 1 }, fontSize: 11 });
 
-        // Instructional Details Box Side Placement
         slide1.addShape(pptx.ShapeType.roundRect, { fill: { color: "F8FAFC" }, line: { color: "E2E8F0", width: 1 }, x: 8.0, y: 2.8, w: 4.8, h: 2.5 });
-        slide1.addText("Testing Operational Notice:\nUse this slideshow compilation file deck parameters during corporate retrospective alignment loops to map out structural user constraints caught inside runtime observation tracks.", {
-            x: 8.2, y: 3.0, w: 4.4, h: 2.1, fontSize: 11, color: "475569"
-        });
+        slide1.addText("Testing Operational Notice:\nUse this slideshow compilation file deck parameters during corporate retrospective alignment loops to map out structural user constraints caught inside runtime observation tracks.", { x: 8.2, y: 3.0, w: 4.4, h: 2.1, fontSize: 11, color: "475569" });
 
-        // SUBSEQUENT SLIDES: Loop to parse all structural content parameters dynamically inside presentation file
+        // NEW ENHANCEMENT - SLIDE 2: CONSOLIDATED QUESTION SUMMARY ANALYSIS
+        let slide2 = pptx.addSlide();
+        slide2.addShape(pptx.ShapeType.rect, { fill: { color: "10B981" }, x: 0, y: 0, w: "100%", h: 1.0 }); // Green indicator bar accent for summary pass
+        slide2.addText("CONSOLIDATED QUESTIONS SUMMARY TRACK", { x: 0.5, y: 0.2, w: 12.0, h: 0.6, fontSize: 22, bold: true, color: "FFFFFF" });
+
+        // Crawl through available reports data in state memory to aggregate answer information matching this specific project profile
+        const targetRecords = reports.filter(r => r.name === reportData.projectName);
+        let consolidatedTextMarkup = "";
+
+        if (targetRecords.length === 0) {
+            consolidatedTextMarkup = "No test sequence input records have been logged into system data caches yet.\nRun a full Corridor Test loop simulation to compile consolidated summary analytics data matrices here.";
+        } else {
+            consolidatedTextMarkup = `Aggregated Session Runs Tracked: ${targetRecords.length} session entries analyzed.\n\n`;
+            
+            // Map question templates cleanly
+            let structuralQuestionsList = proj.questions.filter(q => (q.entryType || 'question') === 'question');
+            
+            structuralQuestionsList.forEach((questionItem, questionIndex) => {
+                consolidatedTextMarkup += `Q${questionIndex + 1}: ${questionItem.text.split('\n')[0]}...\n`;
+                
+                let matchingAnswersCollected = [];
+                // Look for text fragments inside raw structures
+                targetRecords.forEach(rec => {
+                    const lines = rec.content.split('\n');
+                    for(let k = 0; k < lines.length; k++) {
+                        if (lines[k].includes(`QUESTION ${questionIndex + 1}:`) || lines[k].includes(`QUESTION: ${questionItem.text}`)) {
+                            if (k + 1 < lines.length && lines[k+1].trim().startsWith("A:")) {
+                                matchingAnswersCollected.push(lines[k+1].trim().substring(2).trim());
+                            }
+                        }
+                    }
+                });
+
+                if (matchingAnswersCollected.length > 0) {
+                    if (questionItem.type !== 'text') {
+                        // Tally multiple-choice frequency distributions
+                        let distributionMap = {};
+                        matchingAnswersCollected.forEach(ans => {
+                            let splitOptions = ans.split(', ');
+                            splitOptions.forEach(opt => {
+                                distributionMap[opt] = (distributionMap[opt] || 0) + 1;
+                            });
+                        });
+                        for (let alternative in distributionMap) {
+                            consolidatedTextMarkup += `   ✔ Option [${alternative}]: Chosen ${distributionMap[alternative]} times\n`;
+                        }
+                    } else {
+                        // Consolidate plain text insights
+                        consolidatedTextMarkup += `   💬 Text Feedback Insights: "${matchingAnswersCollected[matchingAnswersCollected.length - 1]}" (Latest snapshot sample entry)\n`;
+                    }
+                } else {
+                    consolidatedTextMarkup += "   ⚠️ No active response metrics collected for this item across session records.\n";
+                }
+                consolidatedTextMarkup += "\n";
+            });
+        }
+
+        // Render aggregated text block inside scrollable-style parameters box layout
+        slide2.addShape(pptx.ShapeType.rect, { fill: { color: "F8FAFC" }, line: { color: "CBD5E1", width: 1 }, x: 0.5, y: 1.3, w: 12.3, h: 5.4 });
+        slide2.addText(consolidatedTextMarkup, { x: 0.7, y: 1.4, w: 11.9, h: 5.1, fontSize: 11, color: "1E293B", fontFace: "Courier New", verticalAlign: "top" });
+
+        // SUBSEQUENT SLIDES: Build individual profiles details sheet
         let elementCounter = 0;
         proj.questions.forEach((q) => {
             let slide = pptx.addSlide();
             elementCounter++;
-            
             const rawType = q.entryType || 'question';
             const cleanType = (rawType === 'remark') ? 'TITLE' : rawType.toUpperCase();
             
-            // Header configuration
             slide.addShape(pptx.ShapeType.rect, { fill: { color: "1E293B" }, x: 0, y: 0, w: "100%", h: 0.9 });
-            slide.addText(`ELEMENT PROFILE ${elementCounter} OF ${itemTally} • DESIGNATION: ${cleanType}`, {
-                x: 0.5, y: 0.25, w: 12.0, h: 0.4, fontSize: 14, bold: true, color: "FFFFFF"
-            });
-
-            // Content narrative box layout frame specifications
+            slide.addText(`ELEMENT PROFILE ${elementCounter} OF ${itemTally} • DESIGNATION: ${cleanType}`, { x: 0.5, y: 0.25, w: 12.0, h: 0.4, fontSize: 14, bold: true, color: "FFFFFF" });
             slide.addText("Configured Content Narrative Description:", { x: 0.5, y: 1.2, w: 12.0, h: 0.3, fontSize: 12, bold: true, color: "64748B" });
             
             slide.addShape(pptx.ShapeType.rect, { fill: { color: "F8FAFC" }, line: { color: "E2E8F0", width: 1 }, x: 0.5, y: 1.6, w: 12.3, h: 2.0 });
             slide.addText(q.text, { x: 0.7, y: 1.7, w: 11.9, h: 1.8, fontSize: 14, color: "1E293B", verticalAlign: "top" });
 
-            // Structural Options Parameter Mapping Configurations
             if (rawType === 'question') {
                 slide.addText(`Response Input Profile Style: ${q.type.toUpperCase()}`, { x: 0.5, y: 3.9, w: 12.0, h: 0.3, fontSize: 12, bold: true, color: "2563EB" });
-                
                 if (q.options && q.options.length > 0) {
                     slide.addText("Configured Option Choice Array Elements:", { x: 0.5, y: 4.3, w: 12.0, h: 0.3, fontSize: 11, bold: true, color: "475569" });
                     let optionsListString = q.options.map((o, idx) => `  [  ]  Choice Alternative ${idx + 1}:  ${o}`).join('\n');
@@ -755,13 +833,10 @@
                 }
             } else {
                 slide.addText("Instructional Template Type Notice:", { x: 0.5, y: 3.9, w: 12.0, h: 0.3, fontSize: 12, bold: true, color: "475569" });
-                slide.addText(`This element serves as a static placeholder asset guide rule inside the running panel pipeline. It tracks no active form elements or manual responses.`, {
-                    x: 0.5, y: 4.3, w: 12.0, h: 0.8, fontSize: 12, color: "64748B", italic: true
-                });
+                slide.addText(`This element serves as a static placeholder asset guide rule inside the running panel pipeline. It tracks no active form elements or manual responses.`, { x: 0.5, y: 4.3, w: 12.0, h: 0.8, fontSize: 12, color: "64748B", italic: true });
             }
         });
 
-        // Trigger file compilation binary stream compilation action sequence
         pptx.writeFile({ fileName: `Executive_Report_${reportData.projectName.replace(/\s+/g, '_')}.pptx` });
     }
 </script>
