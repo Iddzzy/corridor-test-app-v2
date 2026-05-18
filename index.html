@@ -10,9 +10,15 @@
             --danger: #ef4444; 
             --success: #10b981; 
             --dark: #1e293b; 
-            /* Enhanced background gradient: Professional deep tech slate to cool silver */
             --light-bg: linear-gradient(135deg, #eef2f6 0%, #d3dcfa 50%, #e2e8f0 100%);
             --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            
+            /* Entry Type Accent Palette */
+            --color-question: #2563eb;
+            --color-task: #8b5cf6;
+            --color-note: #f59e0b;
+            --color-read: #06b6d4;
+            --color-remark: #64748b;
         }
 
         body { 
@@ -29,7 +35,6 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         .card { 
-            /* Increased backing contrast slightly to pop beautifully off the new gradient */
             background: rgba(255, 255, 255, 0.9); 
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
@@ -55,6 +60,7 @@
         input, textarea, select { 
             width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #e2e8f0; 
             border-radius: 12px; font-size: 16px; background: white;
+            box-sizing: border-box;
         }
 
         .choice-row {
@@ -79,6 +85,12 @@
         }
         .blink { color: var(--danger); animation: pulse 1s infinite; }
         @keyframes pulse { 50% { opacity: 0.2; } }
+
+        .badge {
+            display: inline-block; padding: 4px 8px; border-radius: 6px; 
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase; 
+            color: white; margin-bottom: 8px;
+        }
     </style>
 </head>
 <body>
@@ -111,18 +123,35 @@
     <h2 id="editor-head">Project Editor</h2>
     <input type="text" id="proj-name" placeholder="Project Name">
     <div class="card">
-        <h4 id="q-editor-mode" style="margin:0;">Add/Edit Question</h4>
-        <input type="text" id="q-text" placeholder="Question Text">
-        <select id="q-type" onchange="toggleOptionsUI()">
-            <option value="text">Plain Text</option>
-            <option value="radio">Radio Button</option>
-            <option value="checkbox">Checkbox</option>
+        <h4 id="q-editor-mode" style="margin:0 0 10px 0;">Add/Edit Element</h4>
+        
+        <label for="q-entry-type" style="font-size: 0.85rem; font-weight: 600;">Entry Type</label>
+        <select id="q-entry-type" onchange="handleEntryTypeChange()">
+            <option value="question">Question</option>
+            <option value="task">Task</option>
+            <option value="note">Note</option>
+            <option value="read">Read</option>
+            <option value="remark">Remark</option>
         </select>
-        <div id="options-setup" style="display:none; margin-top:10px;">
-            <div id="options-list"></div>
-            <button class="btn-alt" style="padding:8px; font-size:0.8rem; width:auto;" onclick="addOptionInput()">+ Add Option</button>
+
+        <input type="text" id="q-text" placeholder="Content Text description...">
+
+        <!-- Question Type Config Container -->
+        <div id="question-config-block">
+            <label for="q-type" style="font-size: 0.85rem; font-weight: 600;">Input Response Style</label>
+            <select id="q-type" onchange="toggleOptionsUI()">
+                <option value="text">Plain Text Field</option>
+                <option value="radio">Radio Button Selection</option>
+                <option value="checkbox">Checkbox Multi-Selection</option>
+            </select>
+            
+            <div id="options-setup" style="display:none; margin-top:10px;">
+                <div id="options-list"></div>
+                <button class="btn-alt" style="padding:8px; font-size:0.8rem; width:auto;" onclick="addOptionInput()">+ Add Option</button>
+            </div>
         </div>
-        <button id="add-q-btn" class="btn-main" onclick="addOrUpdateQuestion()" style="margin-top:15px;">Save Question to List</button>
+
+        <button id="add-q-btn" class="btn-main" onclick="addOrUpdateQuestion()" style="margin-top:15px;">Save Item to List</button>
     </div>
     <div id="questions-preview"></div>
     <button class="btn-success" onclick="saveProject()">Finalize & Save Project</button>
@@ -256,53 +285,70 @@
 
     function duplicateProject(i) {
         if (i < 0 || i >= projects.length) return;
-        
-        // Deep copy the original project object to decouple reference pointers completely
         const targetProject = JSON.parse(JSON.stringify(projects[i]));
-        
-        // Formulate a distinct name designation
         targetProject.name = `${targetProject.name} _Copy`;
-        
-        // Push copy to main list registry
         projects.push(targetProject);
-        
-        // Persist to local system storage profile
         localStorage.setItem('ct_projects', JSON.stringify(projects));
-        
-        // Record action trace log entry
         addLog(`Project Duplicated: ${targetProject.name}`);
-        
-        // Re-render UI list layout instantly
         renderProjectList();
     }
 
-    function prepareNewProject() { currentEditProjIdx = -1; tempProject = { name: '', questions: [] }; document.getElementById('proj-name').value = ''; renderEditorPreview(); showView('view-editor'); }
+    function prepareNewProject() { 
+        currentEditProjIdx = -1; 
+        tempProject = { name: '', questions: [] }; 
+        document.getElementById('proj-name').value = ''; 
+        document.getElementById('q-entry-type').value = 'question';
+        handleEntryTypeChange();
+        renderEditorPreview(); 
+        showView('view-editor'); 
+    }
     
     function editProject(i) { 
         currentEditProjIdx = i; 
         tempProject = JSON.parse(JSON.stringify(projects[i])); 
         document.getElementById('proj-name').value = tempProject.name; 
+        document.getElementById('q-entry-type').value = 'question';
+        handleEntryTypeChange();
         renderEditorPreview(); 
         showView('view-editor'); 
     }
 
+    // Controls input fields visibility depending on selected entry structure
+    function handleEntryTypeChange() {
+        const entryType = document.getElementById('q-entry-type').value;
+        const configBlock = document.getElementById('question-config-block');
+        if (entryType === 'question') {
+            configBlock.style.display = 'block';
+            toggleOptionsUI();
+        } else {
+            configBlock.style.display = 'none';
+        }
+    }
+
     function addOrUpdateQuestion() {
         const text = document.getElementById('q-text').value;
-        const type = document.getElementById('q-type').value;
+        const entryType = document.getElementById('q-entry-type').value;
         if(!text) return;
-        let options = [];
-        if(type !== 'text') document.querySelectorAll('.opt-val').forEach(i => { if(i.value) options.push(i.value) });
         
-        const qData = { text, type, options, disabled: false };
+        let type = 'text';
+        let options = [];
+        
+        // Only collect question structure specs if entryType match
+        if (entryType === 'question') {
+            type = document.getElementById('q-type').value;
+            if(type !== 'text') {
+                document.querySelectorAll('.opt-val').forEach(i => { if(i.value) options.push(i.value) });
+            }
+        }
+        
+        const qData = { text, entryType: entryType, type, options, disabled: false };
         
         if(currentEditQuesIdx > -1) {
-            // Update existing
             qData.disabled = tempProject.questions[currentEditQuesIdx].disabled;
             tempProject.questions[currentEditQuesIdx] = qData;
             currentEditQuesIdx = -1;
-            document.getElementById('add-q-btn').innerText = "Save Question to List";
+            document.getElementById('add-q-btn').innerText = "Save Item to List";
         } else {
-            // New question
             tempProject.questions.push(qData);
         }
         
@@ -310,12 +356,17 @@
         document.getElementById('q-text').value = ''; 
         document.getElementById('options-list').innerHTML = '';
         document.getElementById('options-setup').style.display = 'none';
+        document.getElementById('q-entry-type').value = 'question';
+        handleEntryTypeChange();
     }
 
     function renderEditorPreview() {
-        document.getElementById('questions-preview').innerHTML = tempProject.questions.map((q, i) => `
-            <div class="card" style="opacity:${q.disabled ? '0.5' : '1'}; border-left: 5px solid ${q.disabled ? '#ccc' : 'var(--primary)'}">
-                <div style="margin-bottom:10px;"><b>${i+1}. ${q.text}</b> <small>(${q.type})</small></div>
+        document.getElementById('questions-preview').innerHTML = tempProject.questions.map((q, i) => {
+            const eType = q.entryType || 'question';
+            return `
+            <div class="card" style="opacity:${q.disabled ? '0.5' : '1'}; border-left: 5px solid var(--color-${eType})">
+                <span class="badge" style="background-color: var(--color-${eType})">${eType}</span>
+                <div style="margin-bottom:10px;"><b>${i+1}. ${q.text}</b> ${eType === 'question' ? `<small>(${q.type})</small>` : ''}</div>
                 <div style="display:flex; gap:5px; flex-wrap:wrap;">
                     <button class="btn-main" style="width:auto; padding:5px 10px; font-size:0.7rem;" onclick="loadQForEdit(${i})">Edit</button>
                     <button class="btn-alt" style="width:auto; padding:5px 10px; font-size:0.7rem;" onclick="moveQ(${i}, -1)">↑ Up</button>
@@ -323,18 +374,27 @@
                     <button style="width:auto; padding:5px 10px; font-size:0.7rem; background:#64748b;" onclick="toggleQ(${i})">${q.disabled ? 'Enable' : 'Disable'}</button>
                     <button class="btn-danger" style="width:auto; padding:5px 10px; font-size:0.7rem;" onclick="removeQ(${i})">Del</button>
                 </div>
-            </div>`).join('');
+            </div>`;
+        }).join('');
     }
 
     function loadQForEdit(i) {
         currentEditQuesIdx = i;
         const q = tempProject.questions[i];
+        const eType = q.entryType || 'question';
+        
         document.getElementById('q-text').value = q.text;
-        document.getElementById('q-type').value = q.type;
-        toggleOptionsUI();
-        document.getElementById('options-list').innerHTML = '';
-        if(q.options) q.options.forEach(opt => addOptionInput(opt));
-        document.getElementById('add-q-btn').innerText = "Update Question #" + (i+1);
+        document.getElementById('q-entry-type').value = eType;
+        handleEntryTypeChange();
+        
+        if(eType === 'question') {
+            document.getElementById('q-type').value = q.type;
+            toggleOptionsUI();
+            document.getElementById('options-list').innerHTML = '';
+            if(q.options) q.options.forEach(opt => addOptionInput(opt));
+        }
+        
+        document.getElementById('add-q-btn').innerText = "Update Item #" + (i+1);
         window.scrollTo(0,0);
     }
 
@@ -346,7 +406,7 @@
     }
 
     function toggleQ(i) { tempProject.questions[i].disabled = !tempProject.questions[i].disabled; renderEditorPreview(); }
-    function removeQ(i) { if(confirm("Delete question?")) { tempProject.questions.splice(i,1); renderEditorPreview(); } }
+    function removeQ(i) { if(confirm("Delete this item?")) { tempProject.questions.splice(i,1); renderEditorPreview(); } }
 
     function saveProject() {
         tempProject.name = document.getElementById('proj-name').value || "Unnamed";
@@ -362,13 +422,29 @@
     function runInterview(idx) {
         const active = projects[idx];
         activeProjectQuestions = active.questions.filter(q => !q.disabled);
-        if(activeProjectQuestions.length === 0) return alert("No enabled questions in this project!");
+        if(activeProjectQuestions.length === 0) return alert("No enabled items in this project!");
         
         document.getElementById('active-p-name').innerText = active.name;
         document.getElementById('interview-questions').innerHTML = activeProjectQuestions.map((q, i) => {
-            let input = `<textarea class="ans-in" data-idx="${i}" placeholder="Notes..."></textarea>`;
-            if(q.type !== 'text') input = q.options.map(opt => `<label class="choice-row"><input type="${q.type}" name="q${i}" value="${opt}" class="ans-in" data-idx="${i}"> <span>${opt}</span></label>`).join('');
-            return `<div class="card"><b>${i+1}. ${q.text}</b><br>${input}</div>`;
+            const eType = q.entryType || 'question';
+            let input = '';
+            
+            if (eType === 'question') {
+                if(q.type === 'text') {
+                    input = `<textarea class="ans-in" data-idx="${i}" placeholder="Notes..."></textarea>`;
+                } else {
+                    input = q.options.map(opt => `<label class="choice-row"><input type="${q.type}" name="q${i}" value="${opt}" class="ans-in" data-idx="${i}"> <span>${opt}</span></label>`).join('');
+                }
+            } else {
+                // Task, Note, Read, and Remarks default to a standard narrative response box
+                input = `<textarea class="ans-in" data-idx="${i}" placeholder="Provide free text input data here..."></textarea>`;
+            }
+            
+            return `
+            <div class="card" style="border-left: 5px solid var(--color-${eType})">
+                <span class="badge" style="background-color: var(--color-${eType})">${eType}</span><br>
+                <b>${i+1}. ${q.text}</b><br>${input}
+            </div>`;
         }).join('');
         showView('view-interview');
     }
@@ -378,9 +454,15 @@
         const dur = document.getElementById('timer-display').innerText;
         let txt = `REPORT: ${activeName}\nDATE: ${new Date().toLocaleString()}\nDURATION: ${dur}\n\n`;
         activeProjectQuestions.forEach((q, i) => {
-            txt += `Q${i+1}: ${q.text}\n`;
-            if(q.type === 'text') txt += `A: ${document.querySelector(`textarea[data-idx="${i}"]`).value}\n`;
-            else { const sel = Array.from(document.querySelectorAll(`input[data-idx="${i}"]:checked`)).map(e => e.value); txt += `A: ${sel.join(', ') || 'None'}\n`; }
+            const eType = (q.entryType || 'question').toUpperCase();
+            txt += `${eType} ${i+1}: ${q.text}\n`;
+            
+            if(q.entryType === 'question' && q.type !== 'text') {
+                const sel = Array.from(document.querySelectorAll(`input[data-idx="${i}"]:checked`)).map(e => e.value); 
+                txt += `A: ${sel.join(', ') || 'None'}\n`;
+            } else {
+                txt += `A: ${document.querySelector(`textarea[data-idx="${i}"]`).value}\n`;
+            }
             txt += `-------------------\n`;
         });
         reports.push({ name: activeName, date: new Date().toLocaleString(), content: txt });
