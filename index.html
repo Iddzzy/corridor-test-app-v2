@@ -245,10 +245,35 @@
     function renderProjectList() {
         document.getElementById('project-list').innerHTML = projects.map((p, i) => `
             <div class="card">
-                <b>${p.name}</b><div style="display:flex; gap:5px; margin-top:10px;">
-                <button class="btn-main" onclick="editProject(${i})">Edit</button>
-                <button class="btn-danger" onclick="deleteProject(${i})">Delete</button></div>
+                <b>${p.name}</b>
+                <div style="display:flex; gap:5px; margin-top:10px;">
+                    <button class="btn-main" onclick="editProject(${i})">Edit</button>
+                    <button class="btn-alt" style="background: #475569;" onclick="duplicateProject(${i})">Duplicate</button>
+                    <button class="btn-danger" onclick="deleteProject(${i})">Delete</button>
+                </div>
             </div>`).join('') || '<p>No projects.</p>';
+    }
+
+    function duplicateProject(i) {
+        if (i < 0 || i >= projects.length) return;
+        
+        // Deep copy the original project object to decouple reference pointers completely
+        const targetProject = JSON.parse(JSON.stringify(projects[i]));
+        
+        // Formulate a distinct name designation
+        targetProject.name = `${targetProject.name} _Copy`;
+        
+        // Push copy to main list registry
+        projects.push(targetProject);
+        
+        // Persist to local system storage profile
+        localStorage.setItem('ct_projects', JSON.stringify(projects));
+        
+        // Record action trace log entry
+        addLog(`Project Duplicated: ${targetProject.name}`);
+        
+        // Re-render UI list layout instantly
+        renderProjectList();
     }
 
     function prepareNewProject() { currentEditProjIdx = -1; tempProject = { name: '', questions: [] }; document.getElementById('proj-name').value = ''; renderEditorPreview(); showView('view-editor'); }
@@ -376,4 +401,3 @@
 </script>
 </body>
 </html>
-
