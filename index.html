@@ -13,12 +13,11 @@
             --light-bg: linear-gradient(135deg, #eef2f6 0%, #d3dcfa 50%, #e2e8f0 100%);
             --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             
-            /* Entry Type Accent Palette */
             --color-question: #2563eb;
             --color-task: #8b5cf6;
             --color-note: #f59e0b;
             --color-read: #06b6d4;
-            --color-title: #64748b; /* Renamed from remark to title */
+            --color-title: #64748b;
         }
 
         body { 
@@ -46,23 +45,10 @@
             transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
         }
 
-        /* Drag and drop interaction state stylings */
-        .card.draggable-item {
-            cursor: grab;
-        }
-        .card.draggable-item:active {
-            cursor: grabbing;
-        }
-        .card.dragging {
-            opacity: 0.4;
-            transform: scale(0.98);
-            border: 2px dashed #94a3b8;
-        }
-        .card.drag-over {
-            border-top: 4px solid var(--primary);
-            transform: translateY(4px);
-            box-shadow: 0 15px 20px -5px rgba(0, 0, 0, 0.1);
-        }
+        .card.draggable-item { cursor: grab; }
+        .card.draggable-item:active { cursor: grabbing; }
+        .card.dragging { opacity: 0.4; transform: scale(0.98); border: 2px dashed #94a3b8; }
+        .card.drag-over { border-top: 4px solid var(--primary); transform: translateY(4px); }
 
         button { 
             padding: 16px; font-weight: 600; border: none; border-radius: 12px; 
@@ -121,6 +107,9 @@
             line-height: 1.5;
         }
     </style>
+    
+    <!-- Required Client-Side Core PowerPoint Construction Modules -->
+    <script src="https://cdn.jsdelivr.net/gh/gitbrent/PptxGenJS@3.12.0/dist/pptxgen.bundle.js"></script>
 </head>
 <body>
 
@@ -131,6 +120,8 @@
         <button class="btn-main" onclick="showView('view-projects-start')">Start Corridor Test</button>
         <button class="btn-alt" onclick="showView('view-settings')">List Of Project</button>
         <button class="btn-success" onclick="showView('view-reports')">Record</button>
+        <!-- New Core Report Generation Engine Placement -->
+        <button style="background: #8b5cf6;" onclick="showView('view-analytics-report')">Report Module</button>
     </div>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
         <button style="background: #64748b;" onclick="showView('view-logs')">Log</button>
@@ -154,27 +145,22 @@
     <div class="card">
         <h4 id="q-editor-mode" style="margin:0 0 10px 0;">Add/Edit Element</h4>
         
-        <label for="q-entry-type" style="font-size: 0.85rem; font-weight: 600;">Entry Type</label>
         <select id="q-entry-type" onchange="handleEntryTypeChange()">
             <option value="question">Question</option>
             <option value="task">Task</option>
             <option value="note">Note</option>
             <option value="read">Read</option>
-            <option value="title">Title</option> <!-- Updated from Remark to Title -->
+            <option value="title">Title</option>
         </select>
 
-        <label for="q-text" style="font-size: 0.85rem; font-weight: 600;">Content Specification</label>
         <textarea id="q-text" placeholder="Type content narrative here... Press Enter to split rows into paragraphs."></textarea>
 
-        <!-- Question Type Config Container -->
         <div id="question-config-block">
-            <label for="q-type" style="font-size: 0.85rem; font-weight: 600;">Input Response Style</label>
             <select id="q-type" onchange="toggleOptionsUI()">
                 <option value="text">Plain Text Field</option>
                 <option value="radio">Radio Button Selection</option>
                 <option value="checkbox">Checkbox Multi-Selection</option>
             </select>
-            
             <div id="options-setup" style="display:none; margin-top:10px;">
                 <div id="options-list"></div>
                 <button class="btn-alt" style="padding:8px; font-size:0.8rem; width:auto;" onclick="addOptionInput()">+ Add Option</button>
@@ -183,9 +169,7 @@
 
         <button id="add-q-btn" class="btn-main" onclick="addOrUpdateQuestion()" style="margin-top:15px;">Save Item to List</button>
     </div>
-    
     <p style="font-size: 0.8rem; color: #64748b; margin: 5px 0; text-align: center;">💡 Hold and drag cards below to quickly rearrange their order</p>
-    
     <div id="questions-preview"></div>
     <button class="btn-success" onclick="saveProject()">Finalize & Save Project</button>
 </div>
@@ -214,6 +198,19 @@
     </div>
 </div>
 
+<!-- NEW REPORT GENERATION SUITE MODULE VIEW -->
+<div id="view-analytics-report" class="view">
+    <button class="btn-back" onclick="showView('view-main')">← Back Home</button>
+    <h2>Executive Report Generator</h2>
+    <div class="card">
+        <label for="report-project-picker" style="font-size: 0.85rem; font-weight: 600;">Select Target Project Profile</label>
+        <select id="report-project-picker"></select>
+        <button class="btn-main" style="background: #8b5cf6; margin-top: 10px;" onclick="generateExecutiveReport()">Generate Report</button>
+    </div>
+    <h3>Compiled PPTX Slide Presentations</h3>
+    <div id="generated-pptx-list"></div>
+</div>
+
 <!-- THANK YOU PAGE -->
 <div id="view-thanks" class="view">
     <div class="card" style="text-align:center; padding:60px 20px;">
@@ -225,7 +222,11 @@
 </div>
 
 <!-- RECORD, LOG, SUMMARY -->
-<div id="view-reports" class="view"> <button class="btn-back" onclick="showView('view-main')">← Back</button> <h2>Record</h2> <div id="reports-list"></div> </div>
+<div id="view-reports" class="view"> 
+    <button class="btn-back" onclick="showView('view-main')">← Back</button> 
+    <h2>Record Details</h2> 
+    <div id="reports-list"></div> 
+</div>
 <div id="view-logs" class="view"> <button class="btn-back" onclick="showView('view-main')">← Back</button> <h2>Log</h2> <div id="logs-list"></div> </div>
 <div id="view-summary" class="view"> <button class="btn-back" onclick="showView('view-main')">← Back</button> <h2>Summary</h2> <div id="summary-content"></div> </div>
 
@@ -234,6 +235,7 @@
     let projects = JSON.parse(localStorage.getItem('ct_projects')) || [];
     let reports = JSON.parse(localStorage.getItem('ct_reports')) || [];
     let logs = JSON.parse(localStorage.getItem('ct_logs')) || [];
+    let pptxReports = JSON.parse(localStorage.getItem('ct_pptx_reports')) || [];
     let currentEditProjIdx = -1;
     let currentEditQuesIdx = -1;
     let tempProject = { name: '', questions: [] };
@@ -252,6 +254,7 @@
         if(id === 'view-reports') renderReports();
         if(id === 'view-logs') renderLogs();
         if(id === 'view-summary') renderSummary();
+        if(id === 'view-analytics-report') initReportModuleView();
         if(id !== 'view-interview') resetTimer();
         window.scrollTo(0,0);
     }
@@ -397,17 +400,13 @@
     function renderEditorPreview() {
         let questionCounter = 0;
         const container = document.getElementById('questions-preview');
-        
         if (tempProject.questions.length === 0) {
             container.innerHTML = '<p style="text-align:center; color:#94a3b8;">No items added yet.</p>';
             return;
         }
-
         container.innerHTML = tempProject.questions.map((q, i) => {
-            // Backward-compatibility: map any legacy 'remark' types cleanly to 'title'
             let eType = q.entryType || 'question';
             if (eType === 'remark') eType = 'title';
-            
             let displayTitle = '';
             if (eType === 'question') {
                 questionCounter++;
@@ -415,17 +414,8 @@
             } else {
                 displayTitle = `<b>${q.text}</b>`;
             }
-
             return `
-            <div class="card draggable-item" 
-                 draggable="true" 
-                 data-index="${i}" 
-                 ondragstart="handleDragStart(event)"
-                 ondragover="handleDragOver(event)"
-                 ondragleave="handleDragLeave(event)"
-                 ondrop="handleDrop(event)"
-                 ondragend="handleDragEnd(event)"
-                 style="opacity:${q.disabled ? '0.5' : '1'}; border-left: 5px solid var(--color-${eType})">
+            <div class="card draggable-item" draggable="true" data-index="${i}" ondragstart="handleDragStart(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)" ondragend="handleDragEnd(event)" style="opacity:${q.disabled ? '0.5' : '1'}; border-left: 5px solid var(--color-${eType})">
                 <span class="badge" style="background-color: var(--color-${eType})">${eType}</span>
                 <div class="paragraph-text">${displayTitle}</div>
                 <div style="display:flex; gap:5px; flex-wrap:wrap;">
@@ -439,62 +429,35 @@
         }).join('');
     }
 
-    // --- HTML5 Drag and Drop Handlers ---
-    function handleDragStart(e) {
-        draggedItemIdx = parseInt(e.currentTarget.getAttribute('data-index'));
-        e.currentTarget.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-    }
-
-    function handleDragOver(e) {
-        if (e.preventDefault) { e.preventDefault(); }
-        e.currentTarget.classList.add('drag-over');
-        return false;
-    }
-
-    function handleDragLeave(e) {
-        e.currentTarget.classList.remove('drag-over');
-    }
-
+    function handleDragStart(e) { draggedItemIdx = parseInt(e.currentTarget.getAttribute('data-index')); e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; }
+    function handleDragOver(e) { if (e.preventDefault) { e.preventDefault(); } e.currentTarget.classList.add('drag-over'); return false; }
+    function handleDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
     function handleDrop(e) {
-        if (e.stopPropagation) { e.stopPropagation(); }
-        e.preventDefault();
-        
+        if (e.stopPropagation) { e.stopPropagation(); } e.preventDefault();
         const targetIdx = parseInt(e.currentTarget.getAttribute('data-index'));
         e.currentTarget.classList.remove('drag-over');
-        
         if (draggedItemIdx !== null && draggedItemIdx !== targetIdx) {
             const movedElement = tempProject.questions.splice(draggedItemIdx, 1)[0];
             tempProject.questions.splice(targetIdx, 0, movedElement);
             renderEditorPreview();
         }
     }
-
-    function handleDragEnd(e) {
-        e.currentTarget.classList.remove('dragging');
-        document.querySelectorAll('.draggable-item').forEach(item => {
-            item.classList.remove('drag-over');
-        });
-        draggedItemIdx = null;
-    }
+    function handleDragEnd(e) { e.currentTarget.classList.remove('dragging'); document.querySelectorAll('.draggable-item').forEach(item => item.classList.remove('drag-over')); draggedItemIdx = null; }
 
     function loadQForEdit(i) {
         currentEditQuesIdx = i;
         const q = tempProject.questions[i];
         let eType = q.entryType || 'question';
         if (eType === 'remark') eType = 'title';
-        
         document.getElementById('q-text').value = q.text;
         document.getElementById('q-entry-type').value = eType;
         handleEntryTypeChange();
-        
         if(eType === 'question') {
             document.getElementById('q-type').value = q.type;
             toggleOptionsUI();
             document.getElementById('options-list').innerHTML = '';
             if(q.options) q.options.forEach(opt => addOptionInput(opt));
         }
-        
         document.getElementById('add-q-btn').innerText = "Update Item #" + (i+1);
         window.scrollTo(0,0);
     }
@@ -511,10 +474,7 @@
 
     function saveProject() {
         tempProject.name = document.getElementById('proj-name').value || "Unnamed";
-        // Final sanity mapping pass to turn any lingering 'remark' tokens to 'title'
-        tempProject.questions.forEach(q => {
-            if (q.entryType === 'remark') q.entryType = 'title';
-        });
+        tempProject.questions.forEach(q => { if (q.entryType === 'remark') q.entryType = 'title'; });
         if(currentEditProjIdx > -1) projects[currentEditProjIdx] = tempProject; else projects.push(tempProject);
         localStorage.setItem('ct_projects', JSON.stringify(projects));
         addLog(`Project Saved: ${tempProject.name}`);
@@ -534,25 +494,20 @@
         document.getElementById('interview-questions').innerHTML = activeProjectQuestions.map((q, i) => {
             let eType = q.entryType || 'question';
             if (eType === 'remark') eType = 'title';
-            
             let inputElementBlock = '';
             let labelTitle = '';
-            
             if (eType === 'question') {
                 activeQuestionIndex++;
                 labelTitle = `<b>${activeQuestionIndex}. ${q.text}</b>`;
-                
                 if(q.type === 'text') {
                     inputElementBlock = `<textarea class="ans-in" data-idx="${i}" placeholder="Notes..."></textarea>`;
                 } else {
                     inputElementBlock = q.options.map(opt => `<label class="choice-row"><input type="${q.type}" name="q${i}" value="${opt}" class="ans-in" data-idx="${i}"> <span>${opt}</span></label>`).join('');
                 }
             } else {
-                // Task, Note, Read, and Title elements possess no numbering prefix or user response fields
                 labelTitle = `<b>${q.text}</b>`;
                 inputElementBlock = ''; 
             }
-            
             return `
             <div class="card" style="border-left: 5px solid var(--color-${eType})">
                 <span class="badge" style="background-color: var(--color-${eType})">${eType}</span>
@@ -566,9 +521,11 @@
     function finishInterview() {
         const activeName = document.getElementById('active-p-name').innerText;
         const dur = document.getElementById('timer-display').innerText;
-        let txt = `REPORT: ${activeName}\nDATE: ${new Date().toLocaleString()}\nDURATION: ${dur}\n\n`;
+        const explicitTimestamp = new Date().toLocaleString(); // Added precise local tracking stamp
         
+        let txt = `REPORT: ${activeName}\nDATE/TIME: ${explicitTimestamp}\nDURATION: ${dur}\n\n`;
         let logQuestionCounter = 0;
+        
         activeProjectQuestions.forEach((q, i) => {
             let eType = q.entryType || 'question';
             if (eType === 'remark') eType = 'title';
@@ -588,10 +545,17 @@
             }
             txt += `-------------------\n`;
         });
-        reports.push({ name: activeName, date: new Date().toLocaleString(), content: txt });
+        
+        // Append explicit recording date and time details directly into state
+        reports.push({ 
+            name: activeName, 
+            date: explicitTimestamp, 
+            content: txt 
+        });
+        
         localStorage.setItem('ct_reports', JSON.stringify(reports));
-        downloadFile(new Blob([txt], {type:'text/plain'}), `Record_${activeName}.txt`);
-        if(audioChunks.length > 0) downloadFile(new Blob(audioChunks, {type:'audio/webm'}), `Audio_${activeName}.webm`);
+        downloadFile(new Blob([txt], {type:'text/plain'}), `Record_${activeName.replace(/\s+/g, '_')}.txt`);
+        if(audioChunks.length > 0) downloadFile(new Blob(audioChunks, {type:'audio/webm'}), `Audio_${activeName.replace(/\s+/g, '_')}.webm`);
         showView('view-thanks');
     }
 
@@ -599,10 +563,207 @@
     function toggleOptionsUI() { document.getElementById('options-setup').style.display = (document.getElementById('q-type').value !== 'text') ? 'block' : 'none'; }
     function addOptionInput(val = '') { const div = document.createElement('div'); div.innerHTML = `<input type="text" class="opt-val" value="${val}" placeholder="Option">`; document.getElementById('options-list').appendChild(div); }
     function downloadFile(blob, name) { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); }
-    function renderReports() { document.getElementById('reports-list').innerHTML = reports.map((r, i) => `<div class="card" style="display:flex; justify-content:space-between; align-items:center;"><b>${r.name}</b><button onclick="downloadFile(new Blob([reports[${i}].content],{type:'text/plain'}),'Record_'+reports[${i}].name+'.txt')" class="btn-success" style="width:auto;">Get</button></div>`).join('') || '<p>No records.</p>'; }
+    
+    function renderReports() { 
+        document.getElementById('reports-list').innerHTML = reports.map((r, i) => `
+            <div class="card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap:10px;">
+                <div>
+                    <b>${r.name}</b><br>
+                    <small style="color:#64748b;">Recorded: ${r.date || 'N/A'}</small>
+                </div>
+                <button onclick="downloadFile(new Blob([reports[${i}].content],{type:'text/plain'}),'Record_'+reports[${i}].name.replace(/\\s+/g, '_')+'.txt')" class="btn-success" style="width:auto; padding:8px 16px;">Download TXT</button>
+            </div>`).join('') || '<p>No records collected yet.</p>'; 
+    }
+    
     function renderLogs() { document.getElementById('logs-list').innerHTML = logs.map(l => `<div class="card" style="font-size:0.8rem; padding:10px;">${l}</div>`).join(''); }
-    function renderSummary() { document.getElementById('summary-content').innerHTML = `<div class="card">Projects: ${projects.length}<br>Records: ${reports.length}</div>`; }
+    function renderSummary() { document.getElementById('summary-content').innerHTML = `<div class="card">Projects Profile Count: ${projects.length}<br>Total Text Records: ${reports.length}<br>PPTX Reports Generated: ${pptxReports.length}</div>`; }
     function deleteProject(i) { if(confirm("Delete?")) { projects.splice(i,1); localStorage.setItem('ct_projects', JSON.stringify(projects)); renderProjectList(); } }
+
+    // --- NEW REPORT ENGINE EXTENSION MODULE ---
+    function initReportModuleView() {
+        const picker = document.getElementById('report-project-picker');
+        if(projects.length === 0) {
+            picker.innerHTML = '<option value="">-- No Active Projects Exist --</option>';
+        } else {
+            picker.innerHTML = projects.map((p, i) => `<option value="${i}">${p.name}</option>`).join('');
+        }
+        renderGeneratedPptxList();
+    }
+
+    function generateExecutiveReport() {
+        const idx = document.getElementById('report-project-picker').value;
+        if(idx === "") return alert("Please establish a project template sequence profile first!");
+        
+        const targetProj = projects[idx];
+        const reportId = Date.now();
+        const timestampString = new Date().toLocaleString();
+        
+        // Count elements categories
+        let questionsCount = 0, tasksCount = 0, notesCount = 0, readsCount = 0, titlesCount = 0;
+        targetProj.questions.forEach(q => {
+            const t = q.entryType || 'question';
+            if(t === 'question') questionsCount++;
+            if(t === 'task') tasksCount++;
+            if(t === 'note') notesCount++;
+            if(t === 'read') readsCount++;
+            if(t === 'title' || t === 'remark') titlesCount++;
+        });
+
+        // Assemble clean formatted text layout configuration
+        let executiveSummaryText = `Project Profile Target Name: ${targetProj.name}\n` +
+                                   `Report Compilation Date/Time: ${timestampString}\n\n` +
+                                   `--- Corridor Test Structural Distribution Metrics ---\n` +
+                                   `• Total Elements Defined: ${targetProj.questions.length}\n` +
+                                   `• Interactive Questions: ${questionsCount}\n` +
+                                   `• Defined Tasks: ${tasksCount}\n` +
+                                   `• Static Notes: ${notesCount}\n` +
+                                   `• Scripted Reads: ${readsCount}\n` +
+                                   `• Text Layout Titles: ${titlesCount}`;
+
+        const newReportItem = {
+            id: reportId,
+            projectName: targetProj.name,
+            compiledTime: timestampString,
+            summary: executiveSummaryText,
+            projectData: targetProj // Deep store structural profile parameters inside report index array
+        };
+
+        pptxReports.unshift(newReportItem);
+        localStorage.setItem('ct_pptx_reports', JSON.stringify(pptxReports));
+        addLog(`Executive Presentation Compiled: ${targetProj.name}`);
+        renderGeneratedPptxList();
+    }
+
+    function renderGeneratedPptxList() {
+        const listContainer = document.getElementById('generated-pptx-list');
+        if(pptxReports.length === 0) {
+            listContainer.innerHTML = '<p style="text-align:center; color:#94a3b8;">No executive reports compiled yet.</p>';
+            return;
+        }
+
+        listContainer.innerHTML = pptxReports.map((r, i) => `
+            <div class="card">
+                <div style="margin-bottom: 12px;">
+                    <span class="badge" style="background:#8b5cf6;">PPTX Presentation</span><br>
+                    <b style="font-size:1.1rem;">${r.projectName}</b><br>
+                    <small style="color:#64748b;">Compiled: ${r.compiledTime}</small>
+                </div>
+                <div style="white-space: pre-wrap; font-size:0.85rem; background:#f1f5f9; padding:12px; border-radius:8px; margin-bottom:12px; color:#334155;">${r.summary}</div>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn-success" style="margin:0; padding:10px;" onclick="downloadPowerPointPresentation(${i})">📥 Download PPTX</button>
+                    <button class="btn-danger" style="margin:0; padding:10px; background:#ef4444;" onclick="deleteGeneratedReport(${i})">🗑 Delete</button>
+                </div>
+            </div>`).join('');
+    }
+
+    function deleteGeneratedReport(idx) {
+        if(confirm("Are you absolutely sure you want to permanently erase this generated report entry?")) {
+            const removed = pptxReports.splice(idx, 1)[0];
+            localStorage.setItem('ct_pptx_reports', JSON.stringify(pptxReports));
+            addLog(`Erased Compiled Report: ${removed.projectName}`);
+            renderGeneratedPptxList();
+        }
+    }
+
+    function downloadPowerPointPresentation(idx) {
+        if (typeof PptxGenJS === 'undefined') {
+            return alert("The PowerPoint rendering engine is currently offline or blocked by connectivity rules. Please check your network connection and try again.");
+        }
+
+        const reportData = pptxReports[idx];
+        const proj = reportData.projectData;
+        
+        // Instantiate fresh presentation object model mapping layout
+        let pptx = new PptxGenJS();
+        pptx.layout = 'LAYOUT_16x9';
+
+        // SLIDE 1: Title & Executive Overview slide configuration layout parameters
+        let slide1 = pptx.addSlide();
+        
+        // Accent Background Top Bar
+        slide1.addShape(pptx.ShapeType.rect, { fill: { color: "2563EB" }, x: 0, y: 0, w: "100%", h: 1.2 });
+        
+        slide1.addText("CORRIDOR TEST EXECUTIVE REPORT", { 
+            x: 0.5, y: 0.3, w: 12.0, h: 0.6, fontSize: 24, bold: true, color: "FFFFFF" 
+        });
+
+        slide1.addText(`Project Profile: ${reportData.projectName}`, { 
+            x: 0.5, y: 1.6, w: 12.0, h: 0.5, fontSize: 20, bold: true, color: "1E293B" 
+        });
+        
+        slide1.addText(`Compilation Run Frame: ${reportData.compiledTime}`, { 
+            x: 0.5, y: 2.1, w: 12.0, h: 0.4, fontSize: 12, italic: true, color: "64748B" 
+        });
+
+        // Metrics Table Grid Layout Parameters
+        let itemTally = proj.questions.length;
+        let qCount = proj.questions.filter(q => (q.entryType || 'question') === 'question').length;
+        let tCount = proj.questions.filter(q => q.entryType === 'task').length;
+        let nCount = proj.questions.filter(q => q.entryType === 'note').length;
+        let rCount = proj.questions.filter(q => q.entryType === 'read').length;
+        let titCount = proj.questions.filter(q => (q.entryType === 'title' || q.entryType === 'remark')).length;
+
+        let rows = [
+            [{ text: "Structural Element Type", options: { bold: true, fill: "E2E8F0" } }, { text: "Total Configured Metrics Tally", options: { bold: true, fill: "E2E8F0" } }],
+            ["Total Target Elements", `${itemTally} units`],
+            ["Interactive Operational Questions", `${qCount} components`],
+            ["Action Tasks", `${tCount} units`],
+            ["Static User Field Notes", `${nCount} details`],
+            ["Scripted Prompt Reads", `${rCount} strings`],
+            ["Layout Division Titles", `${titCount} elements`]
+        ];
+        
+        slide1.addTable(rows, { x: 0.5, y: 2.8, w: 7.0, h: 2.5, border: { type: "solid", color: "CBD5E1", pt: 1 }, fontSize: 11 });
+
+        // Instructional Details Box Side Placement
+        slide1.addShape(pptx.ShapeType.roundRect, { fill: { color: "F8FAFC" }, line: { color: "E2E8F0", width: 1 }, x: 8.0, y: 2.8, w: 4.8, h: 2.5 });
+        slide1.addText("Testing Operational Notice:\nUse this slideshow compilation file deck parameters during corporate retrospective alignment loops to map out structural user constraints caught inside runtime observation tracks.", {
+            x: 8.2, y: 3.0, w: 4.4, h: 2.1, fontSize: 11, color: "475569"
+        });
+
+        // SUBSEQUENT SLIDES: Loop to parse all structural content parameters dynamically inside presentation file
+        let elementCounter = 0;
+        proj.questions.forEach((q) => {
+            let slide = pptx.addSlide();
+            elementCounter++;
+            
+            const rawType = q.entryType || 'question';
+            const cleanType = (rawType === 'remark') ? 'TITLE' : rawType.toUpperCase();
+            
+            // Header configuration
+            slide.addShape(pptx.ShapeType.rect, { fill: { color: "1E293B" }, x: 0, y: 0, w: "100%", h: 0.9 });
+            slide.addText(`ELEMENT PROFILE ${elementCounter} OF ${itemTally} • DESIGNATION: ${cleanType}`, {
+                x: 0.5, y: 0.25, w: 12.0, h: 0.4, fontSize: 14, bold: true, color: "FFFFFF"
+            });
+
+            // Content narrative box layout frame specifications
+            slide.addText("Configured Content Narrative Description:", { x: 0.5, y: 1.2, w: 12.0, h: 0.3, fontSize: 12, bold: true, color: "64748B" });
+            
+            slide.addShape(pptx.ShapeType.rect, { fill: { color: "F8FAFC" }, line: { color: "E2E8F0", width: 1 }, x: 0.5, y: 1.6, w: 12.3, h: 2.0 });
+            slide.addText(q.text, { x: 0.7, y: 1.7, w: 11.9, h: 1.8, fontSize: 14, color: "1E293B", verticalAlign: "top" });
+
+            // Structural Options Parameter Mapping Configurations
+            if (rawType === 'question') {
+                slide.addText(`Response Input Profile Style: ${q.type.toUpperCase()}`, { x: 0.5, y: 3.9, w: 12.0, h: 0.3, fontSize: 12, bold: true, color: "2563EB" });
+                
+                if (q.options && q.options.length > 0) {
+                    slide.addText("Configured Option Choice Array Elements:", { x: 0.5, y: 4.3, w: 12.0, h: 0.3, fontSize: 11, bold: true, color: "475569" });
+                    let optionsListString = q.options.map((o, idx) => `  [  ]  Choice Alternative ${idx + 1}:  ${o}`).join('\n');
+                    slide.addText(optionsListString, { x: 0.5, y: 4.7, w: 12.0, h: 1.5, fontSize: 12, color: "334155", fontFace: "Courier New" });
+                } else {
+                    slide.addText("  [  ] Plain-Text Structural Input Box Mode Active (No multiple choice arrays structured).", { x: 0.5, y: 4.3, w: 12.0, h: 0.4, fontSize: 12, color: "475569", italic: true });
+                }
+            } else {
+                slide.addText("Instructional Template Type Notice:", { x: 0.5, y: 3.9, w: 12.0, h: 0.3, fontSize: 12, bold: true, color: "475569" });
+                slide.addText(`This element serves as a static placeholder asset guide rule inside the running panel pipeline. It tracks no active form elements or manual responses.`, {
+                    x: 0.5, y: 4.3, w: 12.0, h: 0.8, fontSize: 12, color: "64748B", italic: true
+                });
+            }
+        });
+
+        // Trigger file compilation binary stream compilation action sequence
+        pptx.writeFile({ fileName: `Executive_Report_${reportData.projectName.replace(/\s+/g, '_')}.pptx` });
+    }
 </script>
 </body>
 </html>
