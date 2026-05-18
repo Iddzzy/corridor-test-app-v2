@@ -13,7 +13,6 @@
             --light-bg: linear-gradient(135deg, #eef2f6 0%, #d3dcfa 50%, #e2e8f0 100%);
             --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             
-            /* Entry Type Accent Palette */
             --color-question: #2563eb;
             --color-task: #8b5cf6;
             --color-note: #f59e0b;
@@ -61,7 +60,10 @@
             width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #e2e8f0; 
             border-radius: 12px; font-size: 16px; background: white;
             box-sizing: border-box;
+            font-family: inherit;
         }
+        
+        textarea { resize: vertical; min-height: 100px; }
 
         .choice-row {
             display: flex; align-items: center; justify-content: flex-start; 
@@ -90,6 +92,14 @@
             display: inline-block; padding: 4px 8px; border-radius: 6px; 
             font-size: 0.7rem; font-weight: 700; text-transform: uppercase; 
             color: white; margin-bottom: 8px;
+        }
+
+        /* Standardized class rule to maintain visual multiline structural alignment */
+        .paragraph-text {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin: 5px 0 10px 0;
+            line-height: 1.5;
         }
     </style>
 </head>
@@ -134,7 +144,8 @@
             <option value="remark">Remark</option>
         </select>
 
-        <input type="text" id="q-text" placeholder="Content Text description...">
+        <label for="q-text" style="font-size: 0.85rem; font-weight: 600;">Content Specification</label>
+        <textarea id="q-text" placeholder="Type content narrative here... Press Enter to split rows into paragraphs."></textarea>
 
         <!-- Question Type Config Container -->
         <div id="question-config-block">
@@ -297,6 +308,7 @@
         currentEditProjIdx = -1; 
         tempProject = { name: '', questions: [] }; 
         document.getElementById('proj-name').value = ''; 
+        document.getElementById('q-text').value = '';
         document.getElementById('q-entry-type').value = 'question';
         handleEntryTypeChange();
         renderEditorPreview(); 
@@ -307,13 +319,13 @@
         currentEditProjIdx = i; 
         tempProject = JSON.parse(JSON.stringify(projects[i])); 
         document.getElementById('proj-name').value = tempProject.name; 
+        document.getElementById('q-text').value = '';
         document.getElementById('q-entry-type').value = 'question';
         handleEntryTypeChange();
         renderEditorPreview(); 
         showView('view-editor'); 
     }
 
-    // Controls input fields visibility depending on selected entry structure
     function handleEntryTypeChange() {
         const entryType = document.getElementById('q-entry-type').value;
         const configBlock = document.getElementById('question-config-block');
@@ -333,7 +345,6 @@
         let type = 'text';
         let options = [];
         
-        // Only collect question structure specs if entryType match
         if (entryType === 'question') {
             type = document.getElementById('q-type').value;
             if(type !== 'text') {
@@ -361,12 +372,23 @@
     }
 
     function renderEditorPreview() {
+        let questionCounter = 0;
         document.getElementById('questions-preview').innerHTML = tempProject.questions.map((q, i) => {
             const eType = q.entryType || 'question';
+            
+            // Increment sequence number exclusively for questions
+            let displayTitle = '';
+            if (eType === 'question') {
+                questionCounter++;
+                displayTitle = `<b>${questionCounter}. ${q.text}</b> <small>(${q.type})</small>`;
+            } else {
+                displayTitle = `<b>${q.text}</b>`;
+            }
+
             return `
             <div class="card" style="opacity:${q.disabled ? '0.5' : '1'}; border-left: 5px solid var(--color-${eType})">
                 <span class="badge" style="background-color: var(--color-${eType})">${eType}</span>
-                <div style="margin-bottom:10px;"><b>${i+1}. ${q.text}</b> ${eType === 'question' ? `<small>(${q.type})</small>` : ''}</div>
+                <div class="paragraph-text">${displayTitle}</div>
                 <div style="display:flex; gap:5px; flex-wrap:wrap;">
                     <button class="btn-main" style="width:auto; padding:5px 10px; font-size:0.7rem;" onclick="loadQForEdit(${i})">Edit</button>
                     <button class="btn-alt" style="width:auto; padding:5px 10px; font-size:0.7rem;" onclick="moveQ(${i}, -1)">↑ Up</button>
@@ -405,7 +427,7 @@
         renderEditorPreview();
     }
 
-    function toggleQ(i) { tempProject.questions[i].disabled = !tempProject.questions[i].disabled; renderEditorPreview(); }
+    toggleQ = (i) => { tempProject.questions[i].disabled = !tempProject.questions[i].disabled; renderEditorPreview(); }
     function removeQ(i) { if(confirm("Delete this item?")) { tempProject.questions.splice(i,1); renderEditorPreview(); } }
 
     function saveProject() {
@@ -424,26 +446,33 @@
         activeProjectQuestions = active.questions.filter(q => !q.disabled);
         if(activeProjectQuestions.length === 0) return alert("No enabled items in this project!");
         
+        let activeQuestionIndex = 0;
         document.getElementById('active-p-name').innerText = active.name;
         document.getElementById('interview-questions').innerHTML = activeProjectQuestions.map((q, i) => {
             const eType = q.entryType || 'question';
-            let input = '';
+            let inputElementBlock = '';
+            let labelTitle = '';
             
             if (eType === 'question') {
+                activeQuestionIndex++;
+                labelTitle = `<b>${activeQuestionIndex}. ${q.text}</b>`;
+                
                 if(q.type === 'text') {
-                    input = `<textarea class="ans-in" data-idx="${i}" placeholder="Notes..."></textarea>`;
+                    inputElementBlock = `<textarea class="ans-in" data-idx="${i}" placeholder="Notes..."></textarea>`;
                 } else {
-                    input = q.options.map(opt => `<label class="choice-row"><input type="${q.type}" name="q${i}" value="${opt}" class="ans-in" data-idx="${i}"> <span>${opt}</span></label>`).join('');
+                    inputElementBlock = q.options.map(opt => `<label class="choice-row"><input type="${q.type}" name="q${i}" value="${opt}" class="ans-in" data-idx="${i}"> <span>${opt}</span></label>`).join('');
                 }
             } else {
-                // Task, Note, Read, and Remarks default to a standard narrative response box
-                input = `<textarea class="ans-in" data-idx="${i}" placeholder="Provide free text input data here..."></textarea>`;
+                // Static instructions have no numbering and omit interactive user inputs completely
+                labelTitle = `<b>${q.text}</b>`;
+                inputElementBlock = ''; 
             }
             
             return `
             <div class="card" style="border-left: 5px solid var(--color-${eType})">
-                <span class="badge" style="background-color: var(--color-${eType})">${eType}</span><br>
-                <b>${i+1}. ${q.text}</b><br>${input}
+                <span class="badge" style="background-color: var(--color-${eType})">${eType}</span>
+                <div class="paragraph-text">${labelTitle}</div>
+                ${inputElementBlock}
             </div>`;
         }).join('');
         showView('view-interview');
@@ -453,15 +482,24 @@
         const activeName = document.getElementById('active-p-name').innerText;
         const dur = document.getElementById('timer-display').innerText;
         let txt = `REPORT: ${activeName}\nDATE: ${new Date().toLocaleString()}\nDURATION: ${dur}\n\n`;
+        
+        let logQuestionCounter = 0;
         activeProjectQuestions.forEach((q, i) => {
-            const eType = (q.entryType || 'question').toUpperCase();
-            txt += `${eType} ${i+1}: ${q.text}\n`;
+            const eType = q.entryType || 'question';
+            const typeHeader = eType.toUpperCase();
             
-            if(q.entryType === 'question' && q.type !== 'text') {
-                const sel = Array.from(document.querySelectorAll(`input[data-idx="${i}"]:checked`)).map(e => e.value); 
-                txt += `A: ${sel.join(', ') || 'None'}\n`;
+            if (eType === 'question') {
+                logQuestionCounter++;
+                txt += `${typeHeader} ${logQuestionCounter}: ${q.text}\n`;
+                if(q.type !== 'text') {
+                    const sel = Array.from(document.querySelectorAll(`input[data-idx="${i}"]:checked`)).map(e => e.value); 
+                    txt += `A: ${sel.join(', ') || 'None'}\n`;
+                } else {
+                    txt += `A: ${document.querySelector(`textarea[data-idx="${i}"]`).value}\n`;
+                }
             } else {
-                txt += `A: ${document.querySelector(`textarea[data-idx="${i}"]`).value}\n`;
+                // Save text values from layout elements directly
+                txt += `${typeHeader}: ${q.text}\n`;
             }
             txt += `-------------------\n`;
         });
