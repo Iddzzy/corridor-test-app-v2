@@ -79,12 +79,20 @@
         }
         .choice-row input { width: 20px; height: 20px; margin: 0; flex-shrink: 0; }
 
+        /* FIXED LAYER INTERACTION COLLISION OVERLAPPING PATHWAYS */
         .sticky-controls {
             position: fixed; bottom: 0; left: 0; width: 100%;
             background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(15px);
             box-shadow: 0 -5px 20px rgba(0,0,0,0.05); padding: 15px 20px 30px;
             box-sizing: border-box; z-index: 1000; border-top: 1px solid #eee;
+            pointer-events: none; /* Allows mouse interactions to pass through the invisible layout layer */
         }
+        
+        /* Restores click handling exclusively to operational buttons inside the container */
+        .sticky-controls button {
+            pointer-events: auto;
+        }
+        
         .footer-spacer { height: 180px; }
 
         #timer-display { 
@@ -234,8 +242,6 @@
     let startTime, timerInterval, elapsedSeconds = 0;
     let activeProjectQuestions = [];
     let draggedItemIdx = null;
-
-    // Fixed Audio Configuration State Tracking Variable
     let optimizedAudioMimeType = "audio/webm"; 
 
     // --- Navigation ---
@@ -257,12 +263,10 @@
         localStorage.setItem('ct_logs', JSON.stringify(logs.slice(0, 50)));
     }
 
-    // --- Audio Logic (FIXED FOR NO-SOUND ISSUE) ---
+    // --- Audio Logic ---
     async function startAudio() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            
-            // Determine the optimal, high-compatibility media format track configuration parameters supported by the host browser
             if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
                 optimizedAudioMimeType = 'audio/webm;codecs=opus';
             } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
@@ -275,14 +279,8 @@
 
             mediaRecorder = new MediaRecorder(stream, { mimeType: optimizedAudioMimeType });
             audioChunks = [];
-            
-            mediaRecorder.ondataavailable = (e) => { 
-                if (e.data && e.data.size > 0) {
-                    audioChunks.push(e.data); 
-                }
-            };
-            
-            mediaRecorder.start(250); // Slice data into frequent intervals to prevent buffer drop loss
+            mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) audioChunks.push(e.data); };
+            mediaRecorder.start(250); 
             startTimer();
             document.getElementById('recordStatus').innerText = "● RECORDING";
             document.getElementById('recordStatus').classList.add('blink');
@@ -297,7 +295,6 @@
     function stopAudio() {
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             mediaRecorder.stop();
-            // Ensure all audio tracks are released to clear hardware hooks cleanly
             mediaRecorder.stream.getTracks().forEach(track => track.stop());
             stopTimer();
             document.getElementById('recordStatus').innerText = "Stopped";
@@ -368,6 +365,7 @@
         showView('view-editor'); 
     }
 
+    // Controls input fields visibility depending on selected entry structure
     function handleEntryTypeChange() {
         const entryType = document.getElementById('q-entry-type').value;
         const configBlock = document.getElementById('question-config-block');
@@ -435,4 +433,4 @@
                 <span class="badge" style="background-color: var(--color-${eType})">${eType}</span>
                 <div class="paragraph-text">${displayTitle}</div>
                 <div style="display:flex; gap:5px; flex-wrap:wrap;">
-                    <
+                    <button class="btn-main" styl
