@@ -119,7 +119,6 @@
         <button class="btn-main" onclick="showView('view-projects-start')">Start Corridor Test</button>
         <button class="btn-alt" onclick="showView('view-settings')">List Of Project</button>
         <button class="btn-success" onclick="showView('view-reports')">Record</button>
-        <!-- Renamed Module Navigation Binding from 'Report Module' to 'Report' -->
         <button style="background: #8b5cf6;" onclick="showView('view-analytics-report')">Report</button>
     </div>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -139,11 +138,10 @@
 <!-- PROJECT EDITOR -->
 <div id="view-editor" class="view">
     <button class="btn-back" onclick="showView('view-settings')">← Cancel</button>
-    <h2 id="editor-head">Project Editor</h2>
+    <h2>Project Editor</h2>
     <input type="text" id="proj-name" placeholder="Project Name">
     <div class="card">
-        <h4 id="q-editor-mode" style="margin:0 0 10px 0;">Add/Edit Element</h4>
-        
+        <h4 style="margin:0 0 10px 0;">Add/Edit Element</h4>
         <select id="q-entry-type" onchange="handleEntryTypeChange()">
             <option value="question">Question</option>
             <option value="task">Task</option>
@@ -151,9 +149,7 @@
             <option value="read">Read</option>
             <option value="title">Title</option>
         </select>
-
         <textarea id="q-text" placeholder="Type content narrative here... Press Enter to split rows into paragraphs."></textarea>
-
         <div id="question-config-block">
             <select id="q-type" onchange="toggleOptionsUI()">
                 <option value="text">Plain Text Field</option>
@@ -165,7 +161,6 @@
                 <button class="btn-alt" style="padding:8px; font-size:0.8rem; width:auto;" onclick="addOptionInput()">+ Add Option</button>
             </div>
         </div>
-
         <button id="add-q-btn" class="btn-main" onclick="addOrUpdateQuestion()" style="margin-top:15px;">Save Item to List</button>
     </div>
     <p style="font-size: 0.8rem; color: #64748b; margin: 5px 0; text-align: center;">💡 Hold and drag cards below to quickly rearrange their order</p>
@@ -197,7 +192,7 @@
     </div>
 </div>
 
-<!-- REPORT VIEW MANAGEMENT NODE -->
+<!-- REPORT VIEW -->
 <div id="view-analytics-report" class="view">
     <button class="btn-back" onclick="showView('view-main')">← Back Home</button>
     <h2>Report Module</h2>
@@ -240,6 +235,9 @@
     let activeProjectQuestions = [];
     let draggedItemIdx = null;
 
+    // Fixed Audio Configuration State Tracking Variable
+    let optimizedAudioMimeType = "audio/webm"; 
+
     // --- Navigation ---
     function showView(id) {
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -259,25 +257,48 @@
         localStorage.setItem('ct_logs', JSON.stringify(logs.slice(0, 50)));
     }
 
-    // --- Audio Logic ---
+    // --- Audio Logic (FIXED FOR NO-SOUND ISSUE) ---
     async function startAudio() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
+            
+            // Determine the optimal, high-compatibility media format track configuration parameters supported by the host browser
+            if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                optimizedAudioMimeType = 'audio/webm;codecs=opus';
+            } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+                optimizedAudioMimeType = 'audio/ogg;codecs=opus';
+            } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                optimizedAudioMimeType = 'audio/mp4';
+            } else {
+                optimizedAudioMimeType = 'audio/webm';
+            }
+
+            mediaRecorder = new MediaRecorder(stream, { mimeType: optimizedAudioMimeType });
             audioChunks = [];
-            mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
-            mediaRecorder.start();
+            
+            mediaRecorder.ondataavailable = (e) => { 
+                if (e.data && e.data.size > 0) {
+                    audioChunks.push(e.data); 
+                }
+            };
+            
+            mediaRecorder.start(250); // Slice data into frequent intervals to prevent buffer drop loss
             startTimer();
             document.getElementById('recordStatus').innerText = "● RECORDING";
             document.getElementById('recordStatus').classList.add('blink');
             document.getElementById('btnRecStart').disabled = true;
             document.getElementById('btnRecStop').disabled = false;
-        } catch (err) { alert("Mic access denied."); }
+        } catch (err) { 
+            console.error(err);
+            alert("Microphone hardware access denied or unavailable."); 
+        }
     }
 
     function stopAudio() {
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             mediaRecorder.stop();
+            // Ensure all audio tracks are released to clear hardware hooks cleanly
+            mediaRecorder.stream.getTracks().forEach(track => track.stop());
             stopTimer();
             document.getElementById('recordStatus').innerText = "Stopped";
             document.getElementById('recordStatus').classList.remove('blink');
@@ -414,431 +435,4 @@
                 <span class="badge" style="background-color: var(--color-${eType})">${eType}</span>
                 <div class="paragraph-text">${displayTitle}</div>
                 <div style="display:flex; gap:5px; flex-wrap:wrap;">
-                    <button class="btn-main" style="width:auto; padding:5px 10px; font-size:0.7rem;" onclick="loadQForEdit(${i})">Edit</button>
-                    <button class="btn-alt" style="width:auto; padding:5px 10px; font-size:0.7rem;" onclick="moveQ(${i}, -1)">↑ Up</button>
-                    <button class="btn-alt" style="width:auto; padding:5px 10px; font-size:0.7rem;" onclick="moveQ(${i}, 1)">↓ Down</button>
-                    <button style="width:auto; padding:5px 10px; font-size:0.7rem; background:#64748b;" onclick="toggleQ(${i})">${q.disabled ? 'Enable' : 'Disable'}</button>
-                    <button class="btn-danger" style="width:auto; padding:5px 10px; font-size:0.7rem;" onclick="removeQ(${i})">Del</button>
-                </div>
-            </div>`;
-        }).join('');
-    }
-
-    function handleDragStart(e) { draggedItemIdx = parseInt(e.currentTarget.getAttribute('data-index')); e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; }
-    function handleDragOver(e) { if (e.preventDefault) { e.preventDefault(); } e.currentTarget.classList.add('drag-over'); return false; }
-    function handleDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
-    function handleDrop(e) {
-        if (e.stopPropagation) { e.stopPropagation(); } e.preventDefault();
-        const targetIdx = parseInt(e.currentTarget.getAttribute('data-index'));
-        e.currentTarget.classList.remove('drag-over');
-        if (draggedItemIdx !== null && draggedItemIdx !== targetIdx) {
-            const movedElement = tempProject.questions.splice(draggedItemIdx, 1)[0];
-            tempProject.questions.splice(targetIdx, 0, movedElement);
-            renderEditorPreview();
-        }
-    }
-    function handleDragEnd(e) { e.currentTarget.classList.remove('dragging'); document.querySelectorAll('.draggable-item').forEach(item => item.classList.remove('drag-over')); draggedItemIdx = null; }
-
-    function loadQForEdit(i) {
-        currentEditQuesIdx = i;
-        const q = tempProject.questions[i];
-        let eType = q.entryType || 'question';
-        if (eType === 'remark') eType = 'title';
-        document.getElementById('q-text').value = q.text;
-        document.getElementById('q-entry-type').value = eType;
-        handleEntryTypeChange();
-        if(eType === 'question') {
-            document.getElementById('q-type').value = q.type;
-            toggleOptionsUI();
-            document.getElementById('options-list').innerHTML = '';
-            if(q.options) q.options.forEach(opt => addOptionInput(opt));
-        }
-        document.getElementById('add-q-btn').innerText = "Update Item #" + (i+1);
-        window.scrollTo(0,0);
-    }
-
-    function moveQ(index, dir) {
-        let target = index + dir;
-        if(target < 0 || target >= tempProject.questions.length) return;
-        [tempProject.questions[index], tempProject.questions[target]] = [tempProject.questions[target], tempProject.questions[index]];
-        renderEditorPreview();
-    }
-
-    function toggleQ(i) { tempProject.questions[i].disabled = !tempProject.questions[i].disabled; renderEditorPreview(); }
-    function removeQ(i) { if(confirm("Delete this item?")) { tempProject.questions.splice(i,1); renderEditorPreview(); } }
-
-    function saveProject() {
-        tempProject.name = document.getElementById('proj-name').value || "Unnamed";
-        tempProject.questions.forEach(q => { if (q.entryType === 'remark') q.entryType = 'title'; });
-        if(currentEditProjIdx > -1) projects[currentEditProjIdx] = tempProject; else projects.push(tempProject);
-        localStorage.setItem('ct_projects', JSON.stringify(projects));
-        addLog(`Project Saved: ${tempProject.name}`);
-        showView('view-settings');
-    }
-
-    // --- Interview Execution ---
-    function renderStartList() { document.getElementById('start-project-list').innerHTML = projects.map((p, i) => `<button class="btn-main" onclick="runInterview(${i})">${p.name}</button>`).join('') || '<p>No projects.</p>'; }
-
-    function runInterview(idx) {
-        const active = projects[idx];
-        activeProjectQuestions = active.questions.filter(q => !q.disabled);
-        if(activeProjectQuestions.length === 0) return alert("No enabled items in this project!");
-        
-        let activeQuestionIndex = 0;
-        document.getElementById('active-p-name').innerText = active.name;
-        document.getElementById('interview-questions').innerHTML = activeProjectQuestions.map((q, i) => {
-            let eType = q.entryType || 'question';
-            if (eType === 'remark') eType = 'title';
-            let inputElementBlock = '';
-            let labelTitle = '';
-            if (eType === 'question') {
-                activeQuestionIndex++;
-                labelTitle = `<b>${activeQuestionIndex}. ${q.text}</b>`;
-                if(q.type === 'text') {
-                    inputElementBlock = `<textarea class="ans-in" data-idx="${i}" placeholder="Notes..."></textarea>`;
-                } else {
-                    inputElementBlock = q.options.map(opt => `<label class="choice-row"><input type="${q.type}" name="q${i}" value="${opt}" class="ans-in" data-idx="${i}"> <span>${opt}</span></label>`).join('');
-                }
-            } else {
-                labelTitle = `<b>${q.text}</b>`;
-                inputElementBlock = ''; 
-            }
-            return `
-            <div class="card" style="border-left: 5px solid var(--color-${eType})">
-                <span class="badge" style="background-color: var(--color-${eType})">${eType}</span>
-                <div class="paragraph-text">${labelTitle}</div>
-                ${inputElementBlock}
-            </div>`;
-        }).join('');
-        showView('view-interview');
-    }
-
-    function finishInterview() {
-        const activeName = document.getElementById('active-p-name').innerText;
-        const dur = document.getElementById('timer-display').innerText;
-        const explicitTimestamp = new Date().toLocaleString();
-        
-        let txt = `REPORT: ${activeName}\nDATE/TIME: ${explicitTimestamp}\nDURATION: ${dur}\n\n`;
-        let logQuestionCounter = 0;
-        
-        activeProjectQuestions.forEach((q, i) => {
-            let eType = q.entryType || 'question';
-            if (eType === 'remark') eType = 'title';
-            const typeHeader = eType.toUpperCase();
-            
-            if (eType === 'question') {
-                logQuestionCounter++;
-                txt += `${typeHeader} ${logQuestionCounter}: ${q.text}\n`;
-                if(q.type !== 'text') {
-                    const sel = Array.from(document.querySelectorAll(`input[data-idx="${i}"]:checked`)).map(e => e.value); 
-                    txt += `A: ${sel.join(', ') || 'None'}\n`;
-                } else {
-                    txt += `A: ${document.querySelector(`textarea[data-idx="${i}"]`).value}\n`;
-                }
-            } else {
-                txt += `${typeHeader}: ${q.text}\n`;
-            }
-            txt += `-------------------\n`;
-        });
-        
-        reports.push({ name: activeName, date: explicitTimestamp, content: txt });
-        localStorage.setItem('ct_reports', JSON.stringify(reports));
-        downloadFile(new Blob([txt], {type:'text/plain'}), `Record_${activeName.replace(/\s+/g, '_')}.txt`);
-        if(audioChunks.length > 0) downloadFile(new Blob(audioChunks, {type:'audio/webm'}), `Audio_${activeName.replace(/\s+/g, '_')}.webm`);
-        showView('view-thanks');
-    }
-
-    // --- Helpers ---
-    function toggleOptionsUI() { document.getElementById('options-setup').style.display = (document.getElementById('q-type').value !== 'text') ? 'block' : 'none'; }
-    function addOptionInput(val = '') { const div = document.createElement('div'); div.innerHTML = `<input type="text" class="opt-val" value="${val}" placeholder="Option">`; document.getElementById('options-list').appendChild(div); }
-    function downloadFile(blob, name) { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); }
-    
-    function renderReports() { 
-        document.getElementById('reports-list').innerHTML = reports.map((r, i) => `
-            <div class="card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap:10px;">
-                <div>
-                    <b>${r.name}</b><br>
-                    <small style="color:#64748b;">Recorded: ${r.date || 'N/A'}</small>
-                </div>
-                <button onclick="downloadFile(new Blob([reports[${i}].content],{type:'text/plain'}),'Record_'+reports[${i}].name.replace(/\\s+/g, '_')+'.txt')" class="btn-success" style="width:auto; padding:8px 16px;">Download TXT</button>
-            </div>`).join('') || '<p>No records collected yet.</p>'; 
-    }
-    
-    function renderLogs() { document.getElementById('logs-list').innerHTML = logs.map(l => `<div class="card" style="font-size:0.8rem; padding:10px;">${l}</div>`).join(''); }
-    function renderSummary() { document.getElementById('summary-content').innerHTML = `<div class="card">Projects Profile Count: ${projects.length}<br>Total Text Records: ${reports.length}<br>PPTX Reports Generated: ${pptxReports.length}</div>`; }
-    function deleteProject(i) { if(confirm("Delete?")) { projects.splice(i,1); localStorage.setItem('ct_projects', JSON.stringify(projects)); renderProjectList(); } }
-
-    // --- REPORT EXTENSION MODULE ---
-    function initReportModuleView() {
-        const picker = document.getElementById('report-project-picker');
-        if(projects.length === 0) {
-            picker.innerHTML = '<option value="">-- No Active Projects Exist --</option>';
-        } else {
-            picker.innerHTML = projects.map((p, i) => `<option value="${p.name}">${p.name}</option>`).join('');
-        }
-        renderGeneratedPptxList();
-    }
-
-    function generateExecutiveReport() {
-        const pName = document.getElementById('report-project-picker').value;
-        if(pName === "") return alert("Please establish a project template sequence profile first!");
-        
-        const targetProj = projects.find(p => p.name === pName);
-        if(!targetProj) return alert("Selected project context could not be resolved.");
-
-        const reportId = Date.now();
-        const timestampString = new Date().toLocaleString();
-        
-        let questionsCount = 0, tasksCount = 0, notesCount = 0, readsCount = 0, titlesCount = 0;
-        targetProj.questions.forEach(q => {
-            const t = q.entryType || 'question';
-            if(t === 'question') questionsCount++;
-            if(t === 'task') tasksCount++;
-            if(t === 'note') notesCount++;
-            if(t === 'read') readsCount++;
-            if(t === 'title' || t === 'remark') titlesCount++;
-        });
-
-        let executiveSummaryText = `Project Profile Target Name: ${targetProj.name}\n` +
-                                   `Report Compilation Date/Time: ${timestampString}\n\n` +
-                                   `--- Corridor Test Structural Distribution Metrics ---\n` +
-                                   `• Total Elements Defined: ${targetProj.questions.length}\n` +
-                                   `• Interactive Questions: ${questionsCount}\n` +
-                                   `• Defined Tasks: ${tasksCount}\n` +
-                                   `• Static Notes: ${notesCount}\n` +
-                                   `• Scripted Reads: ${readsCount}\n` +
-                                   `• Text Layout Titles: ${titlesCount}`;
-
-        const newReportItem = {
-            id: reportId,
-            projectName: targetProj.name,
-            compiledTime: timestampString,
-            summary: executiveSummaryText,
-            projectData: targetProj 
-        };
-
-        pptxReports.unshift(newReportItem);
-        localStorage.setItem('ct_pptx_reports', JSON.stringify(pptxReports));
-        addLog(`Executive Presentation Compiled: ${targetProj.name}`);
-        renderGeneratedPptxList();
-    }
-
-    function renderGeneratedPptxList() {
-        const listContainer = document.getElementById('generated-pptx-list');
-        if(pptxReports.length === 0) {
-            listContainer.innerHTML = '<p style="text-align:center; color:#94a3b8;">No executive reports compiled yet.</p>';
-            return;
-        }
-
-        listContainer.innerHTML = pptxReports.map((r, i) => `
-            <div class="card">
-                <div style="margin-bottom: 12px;">
-                    <span class="badge" style="background:#8b5cf6;">PPTX Presentation Matrix</span><br>
-                    <b style="font-size:1.1rem;">${r.projectName}</b><br>
-                    <small style="color:#64748b;">Compiled: ${r.compiledTime}</small>
-                </div>
-                <div style="white-space: pre-wrap; font-size:0.85rem; background:#f1f5f9; padding:12px; border-radius:8px; margin-bottom:12px; color:#334155;">${r.summary}</div>
-                <div style="display:grid; grid-template-columns: 1fr; gap:8px;">
-                    <button class="btn-success" style="margin:0; padding:12px;" onclick="downloadPowerPointPresentation(${i})">📥 Download PPTX Deck</button>
-                    <!-- Added CTA element to extract answers exclusively into a structured Excel CSV format spreadsheet matrix -->
-                    <button class="btn-main" style="margin:0; padding:12px; background:#10b981;" onclick="downloadFullFeedbackCSV('${r.projectName.replace(/'/g, "\\'")}')">📊 Download Full Feedback (Excel)</button>
-                    <button class="btn-danger" style="margin:0; padding:12px; background:#ef4444;" onclick="deleteGeneratedReport(${i})">🗑 Delete Report</button>
-                </div>
-            </div>`).join('');
-    }
-
-    function deleteGeneratedReport(idx) {
-        if(confirm("Are you absolutely sure you want to permanently erase this generated report entry?")) {
-            const removed = pptxReports.splice(idx, 1)[0];
-            localStorage.setItem('ct_pptx_reports', JSON.stringify(pptxReports));
-            addLog(`Erased Compiled Report: ${removed.projectName}`);
-            renderGeneratedPptxList();
-        }
-    }
-
-    // Compiles feedback for a given project into an Excel-compatible structured spreadsheet matrix
-    function downloadFullFeedbackCSV(projectName) {
-        // Filter session records matching the project context signature
-        const filteredRecords = reports.filter(r => r.name === projectName);
-        
-        if (filteredRecords.length === 0) {
-            return alert("No runtime session records matching this project profile were found in local storage. Complete a test sequence first!");
-        }
-
-        // Establish core data matrix headers using standard CSV rules
-        let csvContent = "\uFEFF"; // UTF-8 BOM definition to force Microsoft Excel to read characters cleanly
-        csvContent += "Session Date/Time,Question Sequence Label,Target Question Description,Captured User Response Input\n";
-
-        filteredRecords.forEach(record => {
-            const lines = record.content.split('\n');
-            let currentQuestionText = "";
-            let questionNumber = 0;
-
-            // Loop through lines to parse data signatures
-            lines.forEach(line => {
-                const trimmed = line.trim();
-                
-                if (trimmed.startsWith("QUESTION ")) {
-                    // Extract question text descriptions cleanly
-                    const colonIdx = trimmed.indexOf(':');
-                    if (colonIdx !== -1) {
-                        questionNumber++;
-                        currentQuestionText = trimmed.substring(colonIdx + 1).trim();
-                    }
-                } else if (trimmed.startsWith("A:") && currentQuestionText !== "") {
-                    // Capture question-specific user responses
-                    const answerText = trimmed.substring(2).trim();
-                    
-                    // Format output strings safely using CSV double-quote wrapping rules
-                    const safeDate = `"${record.date.replace(/"/g, '""')}"`;
-                    const safeLabel = `"Question ${questionNumber}"`;
-                    const safeQuestion = `"${currentQuestionText.replace(/"/g, '""')}"`;
-                    const safeAnswer = `"${answerText.replace(/"/g, '""')}"`;
-                    
-                    csvContent += `${safeDate},${safeLabel},${safeQuestion},${safeAnswer}\n`;
-                    currentQuestionText = ""; // Clear parsing track
-                }
-            });
-        });
-
-        // Trigger safe file download
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        downloadFile(blob, `Full_Feedback_${projectName.replace(/\s+/g, '_')}.csv`);
-        addLog(`Extracted Spreadsheet Sheet Feedback Matrix: ${projectName}`);
-    }
-
-    function downloadPowerPointPresentation(idx) {
-        if (typeof PptxGenJS === 'undefined') {
-            return alert("The PowerPoint rendering engine is offline. Check your internet connection.");
-        }
-
-        const reportData = pptxReports[idx];
-        const proj = reportData.projectData;
-        
-        let pptx = new PptxGenJS();
-        pptx.layout = 'LAYOUT_16x9';
-
-        // SLIDE 1: Cover & Executive Dashboard Info Layout Block
-        let slide1 = pptx.addSlide();
-        slide1.addShape(pptx.ShapeType.rect, { fill: { color: "2563EB" }, x: 0, y: 0, w: "100%", h: 1.2 });
-        slide1.addText("CORRIDOR TEST EXECUTIVE REPORT", { x: 0.5, y: 0.3, w: 12.0, h: 0.6, fontSize: 24, bold: true, color: "FFFFFF" });
-        slide1.addText(`Project Profile: ${reportData.projectName}`, { x: 0.5, y: 1.6, w: 12.0, h: 0.5, fontSize: 20, bold: true, color: "1E293B" });
-        slide1.addText(`Compilation Run Frame: ${reportData.compiledTime}`, { x: 0.5, y: 2.1, w: 12.0, h: 0.4, fontSize: 12, italic: true, color: "64748B" });
-
-        let itemTally = proj.questions.length;
-        let qCount = proj.questions.filter(q => (q.entryType || 'question') === 'question').length;
-        let tCount = proj.questions.filter(q => q.entryType === 'task').length;
-        let nCount = proj.questions.filter(q => q.entryType === 'note').length;
-        let rCount = proj.questions.filter(q => q.entryType === 'read').length;
-        let titCount = proj.questions.filter(q => (q.entryType === 'title' || q.entryType === 'remark')).length;
-
-        let rows = [
-            [{ text: "Structural Element Type", options: { bold: true, fill: "E2E8F0" } }, { text: "Total Metrics Tally", options: { bold: true, fill: "E2E8F0" } }],
-            ["Total Target Elements", `${itemTally} units`],
-            ["Interactive Operational Questions", `${qCount} components`],
-            ["Action Tasks", `${tCount} units`],
-            ["Static User Field Notes", `${nCount} details`],
-            ["Scripted Prompt Reads", `${rCount} strings`],
-            ["Layout Division Titles", `${titCount} elements`]
-        ];
-        slide1.addTable(rows, { x: 0.5, y: 2.8, w: 7.0, h: 2.5, border: { type: "solid", color: "CBD5E1", pt: 1 }, fontSize: 11 });
-
-        slide1.addShape(pptx.ShapeType.roundRect, { fill: { color: "F8FAFC" }, line: { color: "E2E8F0", width: 1 }, x: 8.0, y: 2.8, w: 4.8, h: 2.5 });
-        slide1.addText("Testing Operational Notice:\nUse this slideshow compilation file deck parameters during corporate retrospective alignment loops to map out structural user constraints caught inside runtime observation tracks.", { x: 8.2, y: 3.0, w: 4.4, h: 2.1, fontSize: 11, color: "475569" });
-
-        // NEW ENHANCEMENT - SLIDE 2: CONSOLIDATED QUESTION SUMMARY ANALYSIS
-        let slide2 = pptx.addSlide();
-        slide2.addShape(pptx.ShapeType.rect, { fill: { color: "10B981" }, x: 0, y: 0, w: "100%", h: 1.0 }); // Green indicator bar accent for summary pass
-        slide2.addText("CONSOLIDATED QUESTIONS SUMMARY TRACK", { x: 0.5, y: 0.2, w: 12.0, h: 0.6, fontSize: 22, bold: true, color: "FFFFFF" });
-
-        // Crawl through available reports data in state memory to aggregate answer information matching this specific project profile
-        const targetRecords = reports.filter(r => r.name === reportData.projectName);
-        let consolidatedTextMarkup = "";
-
-        if (targetRecords.length === 0) {
-            consolidatedTextMarkup = "No test sequence input records have been logged into system data caches yet.\nRun a full Corridor Test loop simulation to compile consolidated summary analytics data matrices here.";
-        } else {
-            consolidatedTextMarkup = `Aggregated Session Runs Tracked: ${targetRecords.length} session entries analyzed.\n\n`;
-            
-            // Map question templates cleanly
-            let structuralQuestionsList = proj.questions.filter(q => (q.entryType || 'question') === 'question');
-            
-            structuralQuestionsList.forEach((questionItem, questionIndex) => {
-                consolidatedTextMarkup += `Q${questionIndex + 1}: ${questionItem.text.split('\n')[0]}...\n`;
-                
-                let matchingAnswersCollected = [];
-                // Look for text fragments inside raw structures
-                targetRecords.forEach(rec => {
-                    const lines = rec.content.split('\n');
-                    for(let k = 0; k < lines.length; k++) {
-                        if (lines[k].includes(`QUESTION ${questionIndex + 1}:`) || lines[k].includes(`QUESTION: ${questionItem.text}`)) {
-                            if (k + 1 < lines.length && lines[k+1].trim().startsWith("A:")) {
-                                matchingAnswersCollected.push(lines[k+1].trim().substring(2).trim());
-                            }
-                        }
-                    }
-                });
-
-                if (matchingAnswersCollected.length > 0) {
-                    if (questionItem.type !== 'text') {
-                        // Tally multiple-choice frequency distributions
-                        let distributionMap = {};
-                        matchingAnswersCollected.forEach(ans => {
-                            let splitOptions = ans.split(', ');
-                            splitOptions.forEach(opt => {
-                                distributionMap[opt] = (distributionMap[opt] || 0) + 1;
-                            });
-                        });
-                        for (let alternative in distributionMap) {
-                            consolidatedTextMarkup += `   ✔ Option [${alternative}]: Chosen ${distributionMap[alternative]} times\n`;
-                        }
-                    } else {
-                        // Consolidate plain text insights
-                        consolidatedTextMarkup += `   💬 Text Feedback Insights: "${matchingAnswersCollected[matchingAnswersCollected.length - 1]}" (Latest snapshot sample entry)\n`;
-                    }
-                } else {
-                    consolidatedTextMarkup += "   ⚠️ No active response metrics collected for this item across session records.\n";
-                }
-                consolidatedTextMarkup += "\n";
-            });
-        }
-
-        // Render aggregated text block inside scrollable-style parameters box layout
-        slide2.addShape(pptx.ShapeType.rect, { fill: { color: "F8FAFC" }, line: { color: "CBD5E1", width: 1 }, x: 0.5, y: 1.3, w: 12.3, h: 5.4 });
-        slide2.addText(consolidatedTextMarkup, { x: 0.7, y: 1.4, w: 11.9, h: 5.1, fontSize: 11, color: "1E293B", fontFace: "Courier New", verticalAlign: "top" });
-
-        // SUBSEQUENT SLIDES: Build individual profiles details sheet
-        let elementCounter = 0;
-        proj.questions.forEach((q) => {
-            let slide = pptx.addSlide();
-            elementCounter++;
-            const rawType = q.entryType || 'question';
-            const cleanType = (rawType === 'remark') ? 'TITLE' : rawType.toUpperCase();
-            
-            slide.addShape(pptx.ShapeType.rect, { fill: { color: "1E293B" }, x: 0, y: 0, w: "100%", h: 0.9 });
-            slide.addText(`ELEMENT PROFILE ${elementCounter} OF ${itemTally} • DESIGNATION: ${cleanType}`, { x: 0.5, y: 0.25, w: 12.0, h: 0.4, fontSize: 14, bold: true, color: "FFFFFF" });
-            slide.addText("Configured Content Narrative Description:", { x: 0.5, y: 1.2, w: 12.0, h: 0.3, fontSize: 12, bold: true, color: "64748B" });
-            
-            slide.addShape(pptx.ShapeType.rect, { fill: { color: "F8FAFC" }, line: { color: "E2E8F0", width: 1 }, x: 0.5, y: 1.6, w: 12.3, h: 2.0 });
-            slide.addText(q.text, { x: 0.7, y: 1.7, w: 11.9, h: 1.8, fontSize: 14, color: "1E293B", verticalAlign: "top" });
-
-            if (rawType === 'question') {
-                slide.addText(`Response Input Profile Style: ${q.type.toUpperCase()}`, { x: 0.5, y: 3.9, w: 12.0, h: 0.3, fontSize: 12, bold: true, color: "2563EB" });
-                if (q.options && q.options.length > 0) {
-                    slide.addText("Configured Option Choice Array Elements:", { x: 0.5, y: 4.3, w: 12.0, h: 0.3, fontSize: 11, bold: true, color: "475569" });
-                    let optionsListString = q.options.map((o, idx) => `  [  ]  Choice Alternative ${idx + 1}:  ${o}`).join('\n');
-                    slide.addText(optionsListString, { x: 0.5, y: 4.7, w: 12.0, h: 1.5, fontSize: 12, color: "334155", fontFace: "Courier New" });
-                } else {
-                    slide.addText("  [  ] Plain-Text Structural Input Box Mode Active (No multiple choice arrays structured).", { x: 0.5, y: 4.3, w: 12.0, h: 0.4, fontSize: 12, color: "475569", italic: true });
-                }
-            } else {
-                slide.addText("Instructional Template Type Notice:", { x: 0.5, y: 3.9, w: 12.0, h: 0.3, fontSize: 12, bold: true, color: "475569" });
-                slide.addText(`This element serves as a static placeholder asset guide rule inside the running panel pipeline. It tracks no active form elements or manual responses.`, { x: 0.5, y: 4.3, w: 12.0, h: 0.8, fontSize: 12, color: "64748B", italic: true });
-            }
-        });
-
-        pptx.writeFile({ fileName: `Executive_Report_${reportData.projectName.replace(/\s+/g, '_')}.pptx` });
-    }
-</script>
-</body>
-</html>
+                    <
